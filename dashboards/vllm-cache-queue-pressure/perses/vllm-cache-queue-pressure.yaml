@@ -1,0 +1,149 @@
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  name: dashboard-9-c-vllm-cache-queue-pressure-admin
+  namespace: redhat-ods-monitoring
+spec:
+  config:
+    display:
+      name: "[C] - vLLM Cache & Queue Pressure"
+      description: "Engine-side causes of latency degradation: KV cache saturation, prefix-cache effectiveness, preemptions, and queue depth, per vLLM model."
+    duration: 1h
+    refreshInterval: 30s
+    variables:
+      - kind: ListVariable
+        spec:
+          name: model
+          display:
+            name: Model
+          allowAllValue: true
+          allowMultiple: false
+          defaultValue: $__all
+          customAllValue: ".*"
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              datasource:
+                kind: PrometheusDatasource
+                name: data-science-prometheus-datasource
+              labelName: model_name
+              matchers:
+                - vllm:num_requests_running
+    panels:
+      kvCacheUtilization:
+        kind: Panel
+        spec:
+          display:
+            name: "KV cache utilization %"
+            description: "Fraction of GPU KV cache blocks in use, worst replica per model. Sustained values near 100% mean the engine is out of cache: new requests queue and running ones can be preempted."
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: 100 * max by (model_name) (vllm:kv_cache_usage_perc{model_name=~"$model"})
+      interTokenLatency:
+        kind: Panel
+        spec:
+          display:
+            name: "Inter-token latency p90 (s)"
+            description: "Time between consecutive streamed output tokens, p90 per model. Spikes indicate the engine is struggling: cache thrash, preemption recompute, or GPU contention, even when the built-in dashboards show nothing wrong."
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: histogram_quantile(0.90, sum by (le, model_name) (rate(vllm:inter_token_latency_seconds_bucket{model_name=~"$model"}[$__rate_interval])))
+      prefillDecodeTime:
+        kind: Panel
+        spec:
+          display:
+            name: "Prefill vs decode time p90 (s)"
+            description: "Where engine time goes: time spent in the PREFILL vs DECODE phase per request, p90. Rising prefill suggests longer prompts or a cold cache; rising decode suggests long generations or memory pressure."
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: histogram_quantile(0.90, sum by (le, model_name) (rate(vllm:request_prefill_time_seconds_bucket{model_name=~"$model"}[$__rate_interval])))
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: histogram_quantile(0.90, sum by (le, model_name) (rate(vllm:request_decode_time_seconds_bucket{model_name=~"$model"}[$__rate_interval])))
+      waitingRequests:
+        kind: Panel
+        spec:
+          display:
+            name: "Waiting requests"
+            description: "Requests queued and not yet running. Read it next to KV cache utilization: rising waiting with flat traffic means cache pressure, not demand growth."
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: sum by (model_name) (vllm:num_requests_waiting{model_name=~"$model"})
+    layouts:
+      - kind: Grid
+        spec:
+          display:
+            title: Cache & queue pressure
+            collapse:
+              open: true
+          items:
+            - content:
+                $ref: "#/spec/panels/kvCacheUtilization"
+              x: 0
+              "y": 0
+              width: 6
+              height: 8
+            - content:
+                $ref: "#/spec/panels/interTokenLatency"
+              x: 6
+              "y": 0
+              width: 6
+              height: 8
+            - content:
+                $ref: "#/spec/panels/prefillDecodeTime"
+              x: 0
+              "y": 8
+              width: 6
+              height: 8
+            - content:
+                $ref: "#/spec/panels/waitingRequests"
+              x: 6
+              "y": 8
+              width: 6
+              height: 8

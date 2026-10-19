@@ -35,10 +35,9 @@ Keeping those answers in Git rather than clicking them together in a UI means th
 
 == Requirements
 
-* {ocp-short} 4.19 or later with `oc` authenticated
-* {rhoai-short} 3.5 or later with the Monitoring Stack enabled
+* {rhoai-short} 3.5 or later with the Monitoring Stack enabled, on an {ocp-short} version that release supports
 * {coo} installed, which provides the Perses CRDs
-* `cluster-admin`, or edit rights on the `{monitoring-ns}` namespace
+* `oc` authenticated as `cluster-admin`, or with edit rights on the `{monitoring-ns}` namespace
 
 xref:deploy-perses.adoc#_verify_the_monitoring_stack[Verify the Monitoring Stack] has the commands to confirm all of this before you apply anything.
 

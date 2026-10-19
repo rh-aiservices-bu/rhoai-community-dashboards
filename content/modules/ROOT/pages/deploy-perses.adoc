@@ -13,9 +13,10 @@ Check the operator is present:
 [source,bash]
 ----
 oc get csv -n openshift-cluster-observability-operator \
-  -l operators.coreos.com/cluster-observability-operator.openshift-cluster-observability="" \
   -o custom-columns=NAME:.metadata.name,PHASE:.status.phase
 ----
+
+The {coo-short} entry must read `Succeeded`.
 
 Check monitoring is enabled on the `DSCInitialization`. An empty `metrics: {}` means the stack was never configured, and nothing downstream exists:
 
@@ -193,7 +194,7 @@ Then confirm the operator accepted it. The dashboard only becomes real once `per
 [source,bash]
 ----
 oc logs -n openshift-cluster-observability-operator \
-  deployment/perses-operator --tail=50 | grep -i dashboard
+  -l app.kubernetes.io/name=perses-operator --tail=50 | grep -i dashboard
 ----
 
 A healthy reconcile looks like this:

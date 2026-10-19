@@ -6,3 +6,4 @@ package-lock.json
 
 # OS noise
 .DS_Store
+scaffold-out/

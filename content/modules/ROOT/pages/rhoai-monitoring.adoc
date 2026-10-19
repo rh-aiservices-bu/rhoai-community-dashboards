@@ -1,10 +1,34 @@
 = The RHOAI Monitoring Stack
+:page-toclevels: -1
 
 Dashboards in this repository are thin. They contain queries and layout, nothing else. Everything that makes those queries answerable, the collection, the storage, the datasource and the access control, is provided by the {rhoai-short} Monitoring Stack.
 
 This page describes what the platform deploys, because knowing it answers the three questions that come up when a dashboard does not work: where does this metric come from, how long is it kept, and who is allowed to see it.
 
-image::rhoai-monitoring-architecture.svg[RHOAI monitoring architecture, width=100%]
+++++
+<style>
+/* The diagram carries more detail than the 46rem content column can show.
+   The page drops its right-hand TOC (page-toclevels: -1), so the block can
+   expand into that space. Expansion is asymmetric on purpose: the left edge
+   has only the 2rem gutter before the nav sidebar, while the right has the
+   whole reclaimed TOC column. Symmetric margins clip the left side. */
+.doc .imageblock.diagram-wide { max-width: none; }
+.doc .imageblock.diagram-wide img { width: 100%; height: auto; }
+@media (min-width: 1100px) {
+  .doc .imageblock.diagram-wide { margin-left: -1.5rem; margin-right: -14rem; }
+}
+@media (min-width: 1400px) {
+  .doc .imageblock.diagram-wide { margin-left: -1.5rem; margin-right: -24rem; }
+}
+@media (min-width: 1700px) {
+  .doc .imageblock.diagram-wide { margin-left: -1.5rem; margin-right: -32rem; }
+}
+</style>
+++++
+
+image::rhoai-monitoring-architecture.png[RHOAI monitoring architecture,role=diagram-wide,link=_images/rhoai-monitoring-architecture.png,window=_blank]
+
+TIP: Click the diagram to open it full size. The editable source is link:{repo-url}/blob/main/diagrams/rhoai-monitoring-architecture.excalidraw[`diagrams/rhoai-monitoring-architecture.excalidraw`], which opens in link:https://excalidraw.com[Excalidraw].
 
 NOTE: Architecture and behaviour on this page follow link:https://issues.redhat.com/browse/RHOAISTRAT-575[RHOAISTRAT-575], which is approved. Details marked as tech preview below may have changed in your release; check the documentation for the version you run.
 

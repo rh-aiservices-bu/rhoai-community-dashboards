@@ -1,11 +1,23 @@
 # -*- coding: utf-8 -*-
-"""Build the RHOAI monitoring architecture diagram.
+"""Scaffold for the RHOAI monitoring architecture diagram.
 
-One layout model -> an editable .excalidraw file plus a matching .svg.
-Facts and labels follow RHOAISTRAT-575 (Approved) and the architecture
-image it carries.
+HISTORICAL. This produced the FIRST version of
+diagrams/rhoai-monitoring-architecture.excalidraw. That file has since
+been edited by hand in Excalidraw, and those edits are the source of
+truth.
+
+DO NOT RUN THIS over the current diagram. It writes
+rhoai-monitoring-architecture.excalidraw from scratch and would discard
+every hand edit. It is kept only to show how the first draft was laid
+out, and writes to ./scaffold-out/ rather than over the real files.
+
+To change the diagram, open the .excalidraw in https://excalidraw.com,
+edit, then re-export both PNG and SVG from Excalidraw itself.
 """
-import json, random, html
+import json, os, random, html
+
+_OUT = "scaffold-out/"
+os.makedirs(_OUT, exist_ok=True)
 
 random.seed(575)                      # deterministic seeds -> stable diffs
 def nonce(): return random.randint(10**8, 2 * 10**9)
@@ -235,7 +247,7 @@ doc = {"type": "excalidraw", "version": 2, "source": "rhoai-dashboards-as-code",
        "appState": {"gridSize": None, "viewBackgroundColor": "#ffffff"},
        "files": {}}
 
-with open("/tmp/diag/rhoai-monitoring-architecture.excalidraw", "w") as f:
+with open(_OUT + "rhoai-monitoring-architecture.excalidraw", "w") as f:
     json.dump(doc, f, indent=2)
 
 # ============================================================= svg emit
@@ -304,7 +316,7 @@ out.append('<g transform="translate(72,56) scale(0.28)">'
            f'<path d="{HAT1}" fill="#e00"/><path d="{HAT2}" fill="#1e1e1e"/></g>')
 out.append("</svg>")
 
-with open("/tmp/diag/rhoai-monitoring-architecture.svg", "w") as f:
+with open(_OUT + "rhoai-monitoring-architecture.svg", "w") as f:
     f.write("\n".join(out))
 
 print(f"excalidraw elements: {len(els)}")

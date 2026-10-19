@@ -8,6 +8,20 @@ latency stalls, and where engine time goes (prefill vs decode), per model.
 Intended for platform administrators and AI observability teams investigating
 why TTFT or end-to-end latency changed.
 
+## What questions it answers
+
+| Question | Panel | Action it informs |
+|---|---|---|
+| Latency spiked - was the engine saturated, or is something else wrong? | KV cache utilization % | Cache pinned near 100% -> add capacity or raise `gpu_memory_utilization`; cache fine -> look elsewhere |
+| Why are requests queueing when traffic has not grown? | Waiting requests next to KV cache utilization | Cache pressure fills the queue even at flat volume: fix context length or config, not replicas |
+| Is the engine struggling between tokens even though nothing failed? | Inter-token latency p90 (s) | Spikes reveal cache thrash, preemption recompute, or GPU contention - none of which produce failed requests |
+| Where does the engine's time go? | Prefill vs decode time p90 (s) | Rising prefill = longer prompts or cold cache; rising decode = long generations or memory pressure |
+| Is this deployment sized right for its workload? | All four together | Sustained pressure + queueing = right-size or add capacity; consistently low = consolidate |
+
+The built-in dashboards show the symptom (e2e/TTFT p90 rising, requests
+waiting) but not the cause. This dashboard closes that gap with the
+engine-side signals.
+
 ## Maintainer
 
 @suhasvkashyap
@@ -38,7 +52,28 @@ All metrics carry the `model_name` label, which the `model` ListVariable uses.
 
 ## Deployment
 
+Prerequisites (checked before applying):
+
+    oc get csv -n openshift-cluster-observability-operator \
+      -o custom-columns=NAME:.metadata.name,PHASE:.status.phase   # cluster-observability-operator: Succeeded
+    oc get perses,persesdatasources -n redhat-ods-monitoring      # data-science-perses + data-science-prometheus-datasource
+
+Deploy:
+
     oc apply -f dashboards/vllm-cache-queue-pressure/perses/
+
+Confirm the perses-operator pushed it to the Perses server (a malformed spec
+surfaces here, not at apply time):
+
+    oc logs -n openshift-cluster-observability-operator \
+      -l app.kubernetes.io/name=perses-operator --tail=50 | grep -i dashboard
+
+Then open Observe -> Observability in the RHOAI console: the tab appears after
+the built-in dashboards, named "[C] - vLLM Cache & Queue Pressure".
+
+Remove:
+
+    oc delete -f dashboards/vllm-cache-queue-pressure/perses/
 
 The manifest sets `namespace: redhat-ods-monitoring` itself (the namespace that
 holds the datasource). Requires only the RHOAI Monitoring Stack - no extra

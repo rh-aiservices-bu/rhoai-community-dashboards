@@ -16,7 +16,8 @@ why TTFT or end-to-end latency changed.
 | Why are requests queueing when traffic has not grown? | Waiting requests next to KV cache utilization | Cache pressure fills the queue even at flat volume: fix context length or config, not replicas |
 | Is the engine struggling between tokens even though nothing failed? | Inter-token latency p90 (s) | Spikes reveal cache thrash, preemption recompute, or GPU contention - none of which produce failed requests |
 | Where does the engine's time go? | Prefill vs decode time p90 (s) | Rising prefill = longer prompts or cold cache; rising decode = long generations or memory pressure |
-| Is this deployment sized right for its workload? | All four together | Sustained pressure + queueing = right-size or add capacity; consistently low = consolidate |
+| Was the latency change driven by traffic, or by the engine? | Token throughput (tokens/s) | Throughput and latency move together -> demand-driven; flat throughput + rising latency -> engine-side problem |
+| Is this deployment sized right for its workload? | All signal panels together | Sustained pressure + queueing = right-size or add capacity; consistently low = consolidate |
 
 The built-in dashboards show the symptom (e2e/TTFT p90 rising, requests
 waiting) but not the cause. This dashboard closes that gap with the
@@ -46,6 +47,7 @@ by the vLLM serving runtime and collected by the RHOAI OpenTelemetry collector:
 | `vllm:inter_token_latency_seconds_bucket` | histogram | Inter-token latency p90 (s) |
 | `vllm:request_prefill_time_seconds_bucket` | histogram | Prefill vs decode time p90 (s) |
 | `vllm:request_decode_time_seconds_bucket` | histogram | Prefill vs decode time p90 (s) |
+| `vllm:generation_tokens_total` | counter (use `rate()`) | Token throughput (tokens/s) |
 | `vllm:num_requests_running` | gauge | Model dropdown |
 
 All metrics carry the `model_name` label, which the `model` ListVariable uses.

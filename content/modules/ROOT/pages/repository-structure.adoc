@@ -103,18 +103,44 @@ Run it yourself before opening a pull request. It needs `yq` and `jq`:
 
 === CodeRabbit review, which does not gate anything
 
-CodeRabbit reviews every pull request and comments on it. `.coderabbit.yaml`
-configures what it looks at, with path instructions that tell it explicitly not
-to repeat the deterministic checks above. It is asked only for judgement a
-script cannot provide: whether the PromQL is correct, whether a counter is
-plotted without `rate()`, whether a `$ref` points at a panel that exists,
-whether a variable is declared but never used.
+CodeRabbit reviews every pull request and comments on the diff.
+`.coderabbit.yaml` configures it, with path instructions that tell it not to
+repeat the deterministic checks above. It is asked only for judgement a script
+cannot provide: whether the PromQL is correct, whether a counter is plotted
+without `rate()`, whether a `$ref` points at a panel that exists, whether a
+variable is declared but never used.
 
 Its comments are advice, not a gate. A maintainer decides what to act on.
 
-NOTE: CodeRabbit's hosted app runs its own models and has no setting for a
-custom endpoint, so it cannot be pointed at a self-managed model endpoint such
-as a Models-as-a-Service deployment on your own cluster.
+It does nothing until the CodeRabbit app is installed on the organization,
+which needs owner rights. It is free for public repositories.
+
+=== Reviewing on our own model instead
+
+`validation/scripts/ai_review.sh` sends the diff to a model running on our own
+cluster rather than to an external service. The *ai review (manual)* workflow
+runs it on demand:
+
+[source,bash]
+----
+gh workflow run "ai review (manual)" -f pr=<number>
+----
+
+It is manual rather than automatic because CodeRabbit already covers the pull
+request path and does it better, with line level comments, incremental review
+on new commits and follow up questions. Running both automatically would mean
+two bots commenting on everything.
+
+Use it when a change should not go to a third party, or to demonstrate the
+platform reviewing its own repository. Expect it to be slow: a 26 KB diff took
+around two minutes and about 17,000 reasoning tokens, because the model reasons
+before it answers.
+
+NOTE: Hosted CodeRabbit reviews with CodeRabbit's own models in CodeRabbit's
+cloud, not with a model you run. Connecting CodeRabbit to your own model
+provider is a self-hosted feature, and self-hosted is limited to Enterprise
+customers with 500 or more seats. That is why these are two separate things
+rather than one configurable one.
 
 === What neither layer does
 

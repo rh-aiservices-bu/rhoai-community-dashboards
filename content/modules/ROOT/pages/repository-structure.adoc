@@ -103,8 +103,8 @@ Run it yourself before opening a pull request. It needs `yq` and `jq`:
 
 === Advisory AI review, which does not gate anything
 
-`validation/scripts/ai_review.sh` sends the diff to a model on RHOAI
-Models-as-a-Service and posts the result as a pull request comment. It is asked
+`validation/scripts/ai_review.sh` sends the diff to a model served on the
+TMM cluster and posts the result as a pull request comment. It is asked
 only for judgement that a script cannot provide: whether the PromQL is correct,
 whether a counter is plotted without `rate()`, whether a `$ref` points at a
 panel that exists, whether a variable is declared but never used.
@@ -117,8 +117,7 @@ passes.
 review instructions explicitly tell it not to repeat the deterministic checks.
 
 NOTE: CodeRabbit's hosted app runs its own models and has no setting for a
-custom endpoint, so it cannot be pointed at a self-managed Models-as-a-Service
-deployment. That is why the advisory review is a separate job rather than
+custom endpoint, so it cannot be pointed at a self-managed model endpoint. That is why the advisory review is a separate job rather than
 CodeRabbit configuration. The two coexist.
 
 === What neither layer does

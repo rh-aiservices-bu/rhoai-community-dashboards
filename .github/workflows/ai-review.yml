@@ -1,7 +1,7 @@
 name: ai review
 
-# Advisory review of dashboard and docs changes using RHOAI
-# Models-as-a-Service. Never gates a merge.
+# Advisory review of Dashboards as Code changes, using an LLM endpoint
+# served on the TMM cluster. Never gates a merge.
 #
 # Uses pull_request, not pull_request_target, on purpose. pull_request_target
 # would expose the API key to code from a forked branch. The consequence is

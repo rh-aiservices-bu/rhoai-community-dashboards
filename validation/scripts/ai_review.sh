@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Advisory AI review of a pull request diff, via an OpenAI-compatible endpoint.
 #
-# Points at RHOAI Models-as-a-Service on the TMM cluster. This is NOT
+# Calls an OpenAI-compatible LLM endpoint served on the TMM cluster. This is NOT
 # CodeRabbit: CodeRabbit's hosted app runs its own models and exposes no
 # setting for a custom base URL, so a self-managed endpoint cannot be plugged
 # into it. This job is the part that can use our own endpoint, and complements
@@ -24,7 +24,7 @@ set -uo pipefail
 
 DIFF_FILE="${1:-pr.diff}"
 MAX_DIFF_CHARS=60000
-TIMEOUT=300
+TIMEOUT=600
 
 # Advisory job: every failure path prints a note and exits 0 so a flaky
 # endpoint never blocks a contributor's pull request.
@@ -110,13 +110,25 @@ PAYLOAD=$(jq -n \
    }')
 
 HTTP_BODY=$(mktemp)
-trap 'rm -f "$HTTP_BODY"' EXIT
 
-HTTP_CODE=$(curl -sS --max-time "$TIMEOUT" -o "$HTTP_BODY" -w '%{http_code}' \
+CURL_ERR=$(mktemp)
+trap 'rm -f "$HTTP_BODY" "$CURL_ERR"' EXIT
+
+# stderr is kept, not discarded: "could not reach the endpoint" on its own told
+# us nothing when this failed on a GitHub runner. curl exit codes worth knowing:
+# 6 DNS, 7 connect refused, 28 timeout, 35 TLS handshake, 52 empty reply,
+# 56 receive error.
+HTTP_CODE=$(curl -sS --max-time "$TIMEOUT" --retry 1 --retry-connrefused \
+  -o "$HTTP_BODY" -w '%{http_code}' \
   -X POST "${BASE_URL}/chat/completions" \
   -H "Authorization: Bearer ${MAAS_API_KEY}" \
   -H "Content-Type: application/json" \
-  -d "$PAYLOAD" 2>/dev/null) || skip "could not reach the endpoint"
+  -d "$PAYLOAD" 2>"$CURL_ERR")
+CURL_RC=$?
+
+if [ "$CURL_RC" -ne 0 ]; then
+  skip "curl exit ${CURL_RC} after ${TIMEOUT}s: $(tr '\n' ' ' < "$CURL_ERR" | cut -c1-300)"
+fi
 
 if [ "$HTTP_CODE" != "200" ]; then
   skip "endpoint returned HTTP ${HTTP_CODE}"
@@ -142,5 +154,5 @@ if [ "$TRUNCATED" -eq 1 ]; then
     "$MAX_DIFF_CHARS"
 fi
 
-printf '\n<sub>Advisory review by <code>%s</code> via RHOAI Models-as-a-Service. ' "$MAAS_MODEL"
+printf '\n<sub>Advisory review by <code>%s</code>. ' "$MAAS_MODEL"
 printf 'Not a merge gate. Deterministic checks run in <b>validate dashboards</b>.</sub>\n'

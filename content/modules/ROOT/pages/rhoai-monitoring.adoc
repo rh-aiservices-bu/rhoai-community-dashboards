@@ -1,0 +1,141 @@
+= The RHOAI Monitoring Stack
+
+Dashboards in this repository are thin. They contain queries and layout, nothing else. Everything that makes those queries answerable, the collection, the storage, the datasource and the access control, is provided by the {rhoai-short} Monitoring Stack.
+
+This page describes what the platform deploys, because knowing it answers the three questions that come up when a dashboard does not work: where does this metric come from, how long is it kept, and who is allowed to see it.
+
+image::rhoai-monitoring-architecture.svg[RHOAI monitoring architecture, width=100%]
+
+NOTE: Architecture and behaviour on this page follow link:https://issues.redhat.com/browse/RHOAISTRAT-575[RHOAISTRAT-575], which is approved. Details marked as tech preview below may have changed in your release; check the documentation for the version you run.
+
+== Everything goes through one collector
+
+The {rhoai-short} operator defines a single OpenTelemetry Collector in gateway mode, managed by the Red Hat build of OpenTelemetry operator, with two replicas by default. It is the one point every signal passes through, which is what makes the rest of the stack consistent: the operator configures common processing centrally, so all telemetry picks up the same Kubernetes identifiers such as namespace and pod.
+
+Metrics reach it by being scraped. Traces reach it by being pushed.
+
+=== How your workload gets discovered
+
+The collector finds things to scrape through one well-known label:
+
+[source,yaml]
+----
+monitoring.opendatahub.io/scrape: "true"
+----
+
+Put it on a `ServiceMonitor` or a `PodMonitor`. Those are the only two discovery strategies, and nothing else is needed: no edit to a central scrape config, no operator change.
+
+IMPORTANT: If a metric you expect is absent from the datasource, this label is the first thing to check. An unlabelled `ServiceMonitor` is not an error anywhere. The workload simply never gets scraped, and the dashboard panel is empty with nothing in any log to explain why.
+
+Because each replica scrapes independently, a target is scraped twice by default. That is expected, and the query layer deduplicates.
+
+The operator also manages scraping for Kueue and for hardware accelerator vendor metrics. Accelerator metrics are normalized to the same conventions {ocp-short} uses, so GPU metrics look the same whether you query them from {rhoai-short} or from the cluster monitoring stack.
+
+== Metrics
+
+A central Prometheus instance, managed by the {coo}, stores metrics on persistent volumes, one per replica. Prometheus scrapes the collector rather than scraping workloads directly.
+
+Retention is *90 days by default* and configurable.
+
+=== Query through Thanos, not Prometheus
+
+Queries go to a Thanos Querier, which deduplicates and merges across the Prometheus replicas and exposes a stable endpoint. This is what Perses dashboards use as their datasource, and what the Custom Metrics Autoscaler reads for autoscaling.
+
+Access to the querier is split across two views, both fronted by `kube-rbac-proxy`:
+
+[cols="1,2", options="header"]
+|===
+| View | Who gets it
+
+| Namespace-scoped
+| Combines `kube-rbac-proxy` with `prom-label-proxy` so a user sees only namespaces they have access to. Requires `PodMetrics` access. This is the general {rhoai-short} user path.
+
+| Unrestricted
+| The whole cluster. Requires `NodeMetrics` access, which is the {rhoai-short} cluster admin path.
+|===
+
+The two views are separate ports on the same querier. This matters for dashboard design: a panel aggregating across all namespaces returns different results depending on which view the reader came through, so a cluster-wide dashboard is worth marking as such. See xref:custom-dashboards.adoc#_the_admin_suffix_restricts_visibility[the `-admin` suffix].
+
+== Alerts
+
+Alertmanager ships with the stack, and the alerts from managed deployments are extended to self-managed installations too.
+
+Customers route alerts with the `AlertmanagerConfig` CR (`monitoring.rhobs/v1alpha1`).
+
+NOTE: While this is tech preview, administrators view alerts by manually exposing the Alertmanager port. There is no console integration for it yet.
+
+== Traces
+
+The operator provisions Tempo, and the storage you give it decides how it is deployed:
+
+[cols="1,1,2", options="header"]
+|===
+| Storage | Mode | Suited to
+
+| Persistent volume
+| Monolithic
+| Smaller deployments
+
+| Object storage
+| Microservices
+| Larger deployments
+|===
+
+WARNING: Changing the storage type re-provisions Tempo and *existing trace data is lost*. Decide between a PV and object storage before you have traces worth keeping.
+
+Retention is 90 days by default, as with metrics.
+
+Workloads are instrumented in one of two ways. Native integration of the OpenTelemetry SDK is preferred and only injects environment variables. Auto-instrumentation is available through an `Instrumentation` CR, but it injects an init container and substantially changes the shape of the workload, and the operator supports the injection mechanism rather than the instrumentation libraries themselves.
+
+Pushing traces is unauthenticated and governed by NetworkPolicy. Every workload on the cluster can send traces by default.
+
+== Logs are not included
+
+There is no out-of-the-box log collection. {rhoai-short} documentation recommends the Cluster Logging Operator where log retention is needed, which stores logs in Loki and can forward to CloudWatch, Elasticsearch, Kafka and Splunk. Out-of-the-box integration is future work.
+
+This has a direct consequence for dashboards here: *Perses does not support logs yet*. A dashboard in this repository can query metrics and traces. If a view genuinely needs log data, it is not a Perses dashboard, and it probably belongs in the xref:custom-dashboards.adoc#_dashboard_register[register].
+
+== Dashboards
+
+The operator defines a central Perses instance, also managed by the {coo-short}, configured against both metrics through Thanos and traces through Tempo.
+
+Because the {rhoai-short} console is separate from the {ocp-short} console, {rhoai-short} ships its own Perses UI rather than relying on the {coo-short} console plugin. Users get observability without needing {ocp-short} console access.
+
+Dashboards are delivered as `PersesDashboard` resources, which is exactly what this repository contains. Component teams own their own dashboards; the platform team provides the conventions. xref:deploy-perses.adoc[Deploy a Perses Dashboard] covers applying one.
+
+== What leaves the cluster
+
+Two export paths, both opt-in.
+
+*Red Hat telemetry.* If enabled, the collector sends a subset of aggregated metrics to Observatorium, in parallel with existing {ocp-short} telemetry. Red Hat engineers read it through Grafana against the {rhoai-short} Observatorium tenant, and P&GE Business Insights surfaces it in Tableau.
+
+*Third party observability.* The collector can export to your own platform. Support follows the Red Hat build of OpenTelemetry support policy, which as of 4.18 is:
+
+[cols="1,2", options="header"]
+|===
+| Signal | Exporters
+
+| Metrics
+| GA: `otlp`. Tech preview: `prometheus`, `prometheusremotewrite`, `kafka`, `cloudwatch`, `file`
+
+| Traces
+| GA: `otlp`. Tech preview: `kafka`, `awsxray`, `file`
+|===
+
+Using one of these does not change anything about dashboards in this repository. The in-cluster datasource stays the same.
+
+== Migrating from User Workload Monitoring
+
+If your component collected metrics into {uwm}, two changes are needed:
+
+. Add `monitoring.opendatahub.io/scrape: "true"` to the `PodMonitor` or `ServiceMonitor` so the platform collector discovers it.
+. Repoint anything that queried Prometheus directly at the Thanos Querier endpoint, and add a `RoleBinding` authorizing that component's service account to read metrics.
+
+From {rhoai-short} 3.6 onwards, {uwm} is no longer referenced in the documentation. See the xref:index.adoc#_user_workload_monitoring_is_deprecated[deprecation notice].
+
+== Reference
+
+* link:https://issues.redhat.com/browse/RHOAISTRAT-575[RHOAISTRAT-575: Centralized Platform Metrics and Alerts]
+* link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html-single/cluster_observability_operator/index[Cluster Observability Operator documentation]
+* link:https://rhobs-handbook.netlify.app/products/openshiftmonitoring/collecting_metrics.md/[Red Hat Monitoring Group handbook: collecting metrics]
+* link:https://opentelemetry.io/docs/concepts/observability-primer/[OpenTelemetry observability primer]

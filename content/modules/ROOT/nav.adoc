@@ -1,6 +1,7 @@
 * xref:index.adoc[Overview]
 
 .Concepts
+* xref:rhoai-monitoring.adoc[The RHOAI Monitoring Stack]
 * xref:custom-dashboards.adoc[Custom Dashboards]
 * xref:repository-structure.adoc[Repository Structure]
 

@@ -95,7 +95,9 @@ To preview locally:
 ----
 npm install
 npx antora generate site.yml
-open www/index.html
+python3 -m http.server -d www 8080
 ----
+
+Then open `http://localhost:8080`. Serve the output rather than opening the files directly — the search index is fetched over HTTP and stays empty on a `file://` URL. Note that `www/index.html` is only a redirect stub; the real entry point is `www/modules/main/index.html`.
 
 Edits to the source documents live in `content/modules/ROOT/pages/`, with navigation in `content/modules/ROOT/nav.adoc`. A new page needs an entry in `nav.adoc` or it will not appear in the sidebar.

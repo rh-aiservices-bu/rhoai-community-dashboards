@@ -29,17 +29,17 @@ rhoai-dashboards-as-code/
 └── .skills/                           <8>
 ----
 <1> Short introduction and links to this documentation site. Not the place for reference material.
-<2> The xref:custom-dashboards.adoc#_dashboard_register[dashboard register] — dashboards that live in other repositories.
+<2> The xref:custom-dashboards.adoc#_dashboard_register[dashboard register], listing dashboards that live in other repositories.
 <3> One directory per dashboard. The contract is below.
 <4> Checks that the Monitoring Stack is deployed and ready. It validates; it never installs.
-<5> Expected resource shapes — `DSCInitialization`, Grafana CRs, datasources. Product changes are absorbed here, not in the script.
+<5> Expected resource shapes: `DSCInitialization`, Grafana CRs, datasources. Product changes are absorbed here, not in the script.
 <6> Antora source for this site.
 <7> Theme overrides: logo, favicon, header and footer partials.
 <8> Agent skills for contributing and deploying a dashboard.
 
 == The dashboard directory contract
 
-A directory under `dashboards/` is named after the dashboard in lowercase with hyphens — `vllm-performance-monitoring`, not `vLLM_Performance` — and contains:
+A directory under `dashboards/` is named after the dashboard in lowercase with hyphens (`vllm-performance-monitoring`, not `vLLM_Performance`) and contains:
 
 [cols="1,3", options="header"]
 |===
@@ -80,7 +80,7 @@ This is a constraint on contributions, not a limitation of the tooling. A dashbo
 
 Structural validation runs on every pull request:
 
-* The directory layout matches the contract above — a dashboard directory with no `README.md`, or with neither `perses/` nor `grafana/`, fails
+* The directory layout matches the contract above. A dashboard directory with no `README.md`, or with neither `perses/` nor `grafana/`, fails
 * Dashboard manifests reference the out-of-the-box datasource rather than an ad-hoc one
 * Queries are not hardcoded to a single model name where a variable would work
 * Naming follows the xref:custom-dashboards.adoc#_naming_and_ordering[naming and ordering conventions]

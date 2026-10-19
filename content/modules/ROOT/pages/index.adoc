@@ -2,11 +2,11 @@
 
 Community-maintained Perses and Grafana dashboards for {rhoai}, kept in Git and deployed with `oc apply`.
 
-* Every dashboard is a Kubernetes resource — reviewed, versioned, and rolled back like any other manifest
+* Every dashboard is a Kubernetes resource: reviewed, versioned, and rolled back like any other manifest
 * Built on the datasource that ships with the {rhoai-short} Monitoring Stack, so there is nothing extra to deploy
 * One deployment path for all dashboards: no Helm for one and Kustomize for the next
 
-IMPORTANT: Dashboards in this repository use the out-of-the-box datasource supplied by the {rhoai-short} Monitoring Stack (`{perses-ds}`). That single constraint is what makes them portable: a dashboard here works on any cluster with the Monitoring Stack enabled, with no exporters, recording rules, or datasource wiring to set up first. Dashboards that need more than that are still welcome — they are linked from the xref:custom-dashboards.adoc#_dashboard_register[dashboard register] and maintained by their authors.
+IMPORTANT: Dashboards in this repository use the out-of-the-box datasource supplied by the {rhoai-short} Monitoring Stack (`{perses-ds}`). That single constraint is what makes them portable: a dashboard here works on any cluster with the Monitoring Stack enabled, with no exporters, recording rules, or datasource wiring to set up first. Dashboards that need more than that are still welcome: they are linked from the xref:custom-dashboards.adoc#_dashboard_register[dashboard register] and maintained by their authors.
 
 == Why dashboards as code
 

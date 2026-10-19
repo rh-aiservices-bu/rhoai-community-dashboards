@@ -21,7 +21,7 @@ One question decides it: *does the dashboard work on a cluster that has only the
 | Dashboard register
 
 | Maintains state, exposes an API, or serves its own UI
-| Neither — that is an application, not a dashboard
+| Neither. That is an application, not a dashboard
 |===
 
 A register entry is not a rejection. It keeps your dashboard discoverable alongside these ones while leaving you in control of a thing only you can maintain correctly. Copying an operator-versioned dashboard into this repository guarantees it goes stale on the operator's next release.
@@ -41,7 +41,7 @@ The xref:repository-structure.adoc#_the_dashboard_directory_contract[directory c
 
 . *Use the out-of-the-box datasource.* `{perses-ds}` for Perses. CI rejects ad-hoc datasources, and a dashboard pointing at something cluster-specific cannot be deployed by anyone else.
 
-. *Parameterize the models.* A query hardcoded to `model_name="granite-3-8b"` is useful on exactly one cluster. Use a `ListVariable` — xref:deploy-perses.adoc#_a_minimal_dashboard[the minimal dashboard] shows the pattern.
+. *Parameterize the models.* A query hardcoded to `model_name="granite-3-8b"` is useful on exactly one cluster. Use a `ListVariable`; xref:deploy-perses.adoc#_a_minimal_dashboard[the minimal dashboard] shows the pattern.
 
 . *Follow the naming conventions.* `[C] -` on the display name, `dashboard-9-c-<slug>` on the resource name, `-admin` only if the dashboard is genuinely cluster-wide. See xref:custom-dashboards.adoc#_naming_and_ordering[naming and ordering].
 
@@ -56,16 +56,16 @@ The xref:repository-structure.adoc#_the_dashboard_directory_contract[directory c
 This is the part that decides whether anyone else can use what you wrote. A dashboard with no README is a dashboard that renders empty panels on the next cluster with no way to find out why.
 
 Purpose and audience:: What question it answers and who is meant to read it. One or two sentences.
-Maintainer:: A GitHub handle or team. Not necessarily the author — whoever should be asked when it breaks.
+Maintainer:: A GitHub handle or team. Not necessarily the author, but whoever should be asked when it breaks.
 Tested versions:: {rhoai-short} version, and the runtime version for runtime metrics. vLLM metric names change between releases, so "vLLM 0.8.x" is useful and "recent vLLM" is not.
 Required metrics:: The metric names the dashboard queries, with the component that exports them. This is what lets someone check compatibility before deploying rather than after.
-Deployment:: The `oc apply` command and the namespace. Note anything beyond the Monitoring Stack — if there is anything, re-read the scope table above.
+Deployment:: The `oc apply` command and the namespace. Note anything beyond the Monitoring Stack. If there is anything, re-read the scope table above.
 Known limitations:: Panels that need a metric not everyone has, or that assume a particular model-naming scheme. Writing these down is faster than fielding the questions.
 Screenshot:: Optional, and only with sanitized data. Real model names and project names are customer identifiers.
 
 == Before you commit
 
-Remove credentials, tokens, customer and project identifiers, internal hostnames, and cluster URLs — from manifests, from screenshots, and from README examples. Dashboard JSON exported from a live Grafana carries datasource UIDs and sometimes the cluster URL; check the whole file, not the queries.
+Remove credentials, tokens, customer and project identifiers, internal hostnames, and cluster URLs from manifests, screenshots, and README examples. Dashboard JSON exported from a live Grafana carries datasource UIDs and sometimes the cluster URL; check the whole file, not the queries.
 
 Parameterize anything environment-specific. If a value has to be edited before the dashboard works, say so in the README rather than leaving the next person to find it.
 
@@ -98,6 +98,6 @@ npx antora generate site.yml
 python3 -m http.server -d www 8080
 ----
 
-Then open `http://localhost:8080`. Serve the output rather than opening the files directly — the search index is fetched over HTTP and stays empty on a `file://` URL. Note that `www/index.html` is only a redirect stub; the real entry point is `www/modules/main/index.html`.
+Then open `http://localhost:8080`. Serve the output rather than opening the files directly: the search index is fetched over HTTP and stays empty on a `file://` URL. Note that `www/index.html` is only a redirect stub; the real entry point is `www/modules/main/index.html`.
 
 Edits to the source documents live in `content/modules/ROOT/pages/`, with navigation in `content/modules/ROOT/nav.adoc`. A new page needs an entry in `nav.adoc` or it will not appear in the sidebar.

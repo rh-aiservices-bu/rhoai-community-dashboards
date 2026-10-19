@@ -1,6 +1,6 @@
 = Deploy a Perses Dashboard
 
-A Perses dashboard is a `PersesDashboard` resource. Deploying one is `oc apply`. Almost everything that goes wrong goes wrong before that — in the namespace you picked, or in the datasource the dashboard references.
+A Perses dashboard is a `PersesDashboard` resource. Deploying one is `oc apply`. Almost everything that goes wrong goes wrong before that: in the namespace you picked, or in the datasource the dashboard references.
 
 == Verify the Monitoring Stack
 
@@ -32,7 +32,7 @@ Check the Perses server and the datasource the dashboard will reference:
 oc get perses,persesdatasources -n redhat-ods-monitoring
 ----
 
-Expected output — the server is `data-science-perses`, the datasource is `{perses-ds}`:
+Expected output, where the server is `data-science-perses` and the datasource is `{perses-ds}`:
 
 [source,text]
 ----
@@ -49,7 +49,7 @@ If the datasource is missing, stop. A dashboard referencing a datasource that do
 
 Perses treats a namespace as a project, and a `PersesDatasource` is project-scoped. A dashboard can only resolve a datasource in its own namespace.
 
-IMPORTANT: Deploy custom dashboards into `{monitoring-ns}`, the namespace that holds `{perses-ds}`. A dashboard applied to `default` — or to any namespace without its own datasource — is accepted by the API server, reconciled by the operator, and shows no data. There is no error anywhere in the chain pointing at the namespace.
+IMPORTANT: Deploy custom dashboards into `{monitoring-ns}`, the namespace that holds `{perses-ds}`. A dashboard applied to `default`, or to any namespace without its own datasource, is accepted by the API server, reconciled by the operator, and shows no data. There is no error anywhere in the chain pointing at the namespace.
 
 [source,yaml]
 ----
@@ -211,7 +211,7 @@ Then open *Observe* -> *Observability* in the {rhoai-short} console. The dashboa
 
 The dashboard rendered, so the manifest is valid and the operator is reconciling it. What is left is the data path. In order of likelihood:
 
-. *The datasource is in another namespace.* `oc get persesdatasources -n <your-dashboard-namespace>` returns nothing — move the dashboard to `{monitoring-ns}`.
+. *The datasource is in another namespace.* `oc get persesdatasources -n <your-dashboard-namespace>` returns nothing. Move the dashboard to `{monitoring-ns}`.
 . *The metric does not exist on this cluster.* Query it directly in *Observe* -> *Metrics* with no label filters. vLLM metric names vary between runtime versions, and a metric that was renamed in a newer vLLM returns nothing without erroring.
 . *The variable matched nothing.* An empty `model` dropdown means `matchers` selected a metric with no series. The panel query then filters on an empty variable and returns no data.
 . *A label was renamed.* Metrics gained a `_total` suffix between some {rhoai-short} releases, and label names have moved too. Compare against a built-in dashboard's query for the same data.
@@ -223,4 +223,4 @@ The dashboard rendered, so the manifest is valid and the operator is reconciling
 oc delete -f dashboards/<dashboard-name>/perses/
 ----
 
-The operator removes it from the Perses server on reconcile and the console tab disappears. Deleting a dashboard affects no other dashboard — each one is an independent resource, which is the whole point of the one-dashboard-per-directory layout.
+The operator removes it from the Perses server on reconcile and the console tab disappears. Deleting a dashboard affects no other dashboard. Each one is an independent resource, which is the whole point of the one-dashboard-per-directory layout.

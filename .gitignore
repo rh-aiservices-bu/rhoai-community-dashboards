@@ -1,0 +1,8 @@
+# Antora build output and caches
+www/
+.cache/
+node_modules/
+package-lock.json
+
+# OS noise
+.DS_Store

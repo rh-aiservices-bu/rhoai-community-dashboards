@@ -4,6 +4,16 @@ A community-driven collection of custom dashboards as code and observability app
 
 Keep dashboard definitions and application source code in Git, adapt them to your environment, and deploy them through the documented installation or GitOps workflow. Contributions can include Perses and Grafana dashboards, services, operators, and user interfaces that turn OpenShift AI telemetry and usage data into operational insights and workflows.
 
+**Full documentation:** https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/
+
+| Guide | What it covers |
+|-------|----------------|
+| [Overview](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/index.html) | What this repository is for and what it requires |
+| [Custom Dashboards](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/custom-dashboards.html) | Naming and ordering conventions, Perses vs Grafana, the dashboard register |
+| [Repository Structure](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/repository-structure.html) | Directory layout, the dashboard directory contract, what CI checks |
+| [Deploy a Perses Dashboard](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/deploy-perses.html) | Verifying the Monitoring Stack, applying a `PersesDashboard`, troubleshooting |
+| [Contribution Guide](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/contributing.html) | Scope, workflow, the README each dashboard needs, review gates |
+
 ## What is a custom dashboard?
 
 A custom dashboard extends or reorganizes the views provided out of the box by OpenShift AI. It can expose additional runtime metrics, apply organization-specific filters and calculations, or bring signals from several domains into one view. It queries the underlying observability data rather than querying other dashboards.

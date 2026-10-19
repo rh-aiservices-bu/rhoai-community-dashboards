@@ -1,0 +1,58 @@
+= RHOAI Dashboards as Code
+
+Community-maintained Perses and Grafana dashboards for {rhoai}, kept in Git and deployed with `oc apply`.
+
+* Every dashboard is a Kubernetes resource — reviewed, versioned, and rolled back like any other manifest
+* Built on the datasource that ships with the {rhoai-short} Monitoring Stack, so there is nothing extra to deploy
+* One deployment path for all dashboards: no Helm for one and Kustomize for the next
+
+IMPORTANT: Dashboards in this repository use the out-of-the-box datasource supplied by the {rhoai-short} Monitoring Stack (`{perses-ds}`). That single constraint is what makes them portable: a dashboard here works on any cluster with the Monitoring Stack enabled, with no exporters, recording rules, or datasource wiring to set up first. Dashboards that need more than that are still welcome — they are linked from the xref:custom-dashboards.adoc#_dashboard_register[dashboard register] and maintained by their authors.
+
+== Why dashboards as code
+
+The {rhoai-short} console ships a handful of dashboards covering models, serving traffic, and utilization. They answer the questions the product team anticipated. They do not answer "is the queue depth on *our* summarization service drifting again", because that question is specific to your models, your naming, and your organization.
+
+Keeping those answers in Git rather than clicking them together in a UI means they survive a cluster rebuild, get reviewed before they reach anyone's screen, and can be shared across teams as a pull request instead of a screenshot.
+
+== What is here
+
+[cols="1,2", options="header"]
+|===
+| Page | What it covers
+
+| xref:custom-dashboards.adoc[Custom Dashboards]
+| What counts as a custom dashboard, the naming and ordering conventions that keep them distinguishable from the built-in ones, and how Perses and Grafana differ in practice
+
+| xref:repository-structure.adoc[Repository Structure]
+| The directory layout, what each dashboard directory must contain, and what CI checks
+
+| xref:deploy-perses.adoc[Deploy a Perses Dashboard]
+| Verifying the Monitoring Stack, applying a `PersesDashboard`, and the namespace and YAML traps that cost the most time
+
+| xref:contributing.adoc[Contribution Guide]
+| The bar a contribution has to meet, the review workflow, and what to do when your dashboard does not fit the standard shape
+|===
+
+== Requirements
+
+* {ocp-short} 4.19 or later with `oc` authenticated
+* {rhoai-short} 3.5 or later with the Monitoring Stack enabled
+* {coo} installed, which provides the Perses CRDs
+* `cluster-admin`, or edit rights on the `{monitoring-ns}` namespace
+
+xref:deploy-perses.adoc#_verify_the_monitoring_stack[Verify the Monitoring Stack] has the commands to confirm all of this before you apply anything.
+
+== User Workload Monitoring is deprecated
+
+NOTE: From {rhoai-short} 3.6 onwards, {uwm} is no longer referenced in the {rhoai-short} documentation. The link:https://github.com/rh-aiservices-bu/rhoai-uwm[rhoai-uwm] repository remains available for existing 3.5 and earlier deployments, but new work should target the {rhoai-short} Monitoring Stack and this repository. If you are planning an upgrade, migrate to the Monitoring Stack rather than carrying {uwm} forward.
+
+== Support
+
+Dashboards here are community contributions, not Red Hat supported product content. Validate the queries, the metric names, and the access controls against your own cluster before you put a dashboard in front of anyone who will make decisions with it.
+
+== Reference
+
+* link:{repo-url}[rhoai-dashboards-as-code repository]
+* link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/managing_and_monitoring_models/managing_and_monitoring_models#configuring-monitoring-for-the-model-serving-platform_cluster-admin[RHOAI 3.5: Configuring monitoring for the model serving platform]
+* link:https://perses.dev/perses/docs/[Perses documentation]
+* link:https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards[Grafana dashboard provisioning]

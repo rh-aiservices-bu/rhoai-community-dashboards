@@ -1,0 +1,11 @@
+* xref:index.adoc[Overview]
+
+.Concepts
+* xref:custom-dashboards.adoc[Custom Dashboards]
+* xref:repository-structure.adoc[Repository Structure]
+
+.Deploying
+* xref:deploy-perses.adoc[Deploy a Perses Dashboard]
+
+.Contributing
+* xref:contributing.adoc[Contribution Guide]

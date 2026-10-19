@@ -1,0 +1,225 @@
+= Deploy a Perses Dashboard
+
+A Perses dashboard is a `PersesDashboard` resource. Deploying one is `oc apply`. Almost everything that goes wrong goes wrong before that — in the namespace you picked, or in the datasource the dashboard references.
+
+== Verify the Monitoring Stack
+
+The {rhoai-short} operator owns the Perses lifecycle. It creates the Perses server, its datasources, and the built-in dashboards on every reconcile. Your job is to confirm it has done so, not to deploy any of it yourself.
+
+NOTE: The {coo} must be installed into the `openshift-cluster-observability-operator` namespace. The {rhoai-short} operator's `perses-operator-access` NetworkPolicy only admits that namespace. {coo-short} installed into `openshift-operators` leaves the Perses path broken with `bad request: metadata.project doesn't exist`, and the symptom appears on dashboard apply rather than at install time.
+
+Check the operator is present:
+
+[source,bash]
+----
+oc get csv -n openshift-cluster-observability-operator \
+  -l operators.coreos.com/cluster-observability-operator.openshift-cluster-observability="" \
+  -o custom-columns=NAME:.metadata.name,PHASE:.status.phase
+----
+
+Check monitoring is enabled on the `DSCInitialization`. An empty `metrics: {}` means the stack was never configured, and nothing downstream exists:
+
+[source,bash]
+----
+oc get dsci default-dsci -o jsonpath='{.spec.monitoring}' | jq
+----
+
+Check the Perses server and the datasource the dashboard will reference:
+
+[source,bash]
+----
+oc get perses,persesdatasources -n redhat-ods-monitoring
+----
+
+Expected output — the server is `data-science-perses`, the datasource is `{perses-ds}`:
+
+[source,text]
+----
+NAME                                     AGE
+perses.perses.dev/data-science-perses     5d
+
+NAME                                                             AGE
+persesdatasource.perses.dev/data-science-prometheus-datasource   5d
+----
+
+If the datasource is missing, stop. A dashboard referencing a datasource that does not exist applies cleanly and then renders every panel empty, which is a considerably more confusing failure than an apply error.
+
+== Namespace is not optional
+
+Perses treats a namespace as a project, and a `PersesDatasource` is project-scoped. A dashboard can only resolve a datasource in its own namespace.
+
+IMPORTANT: Deploy custom dashboards into `{monitoring-ns}`, the namespace that holds `{perses-ds}`. A dashboard applied to `default` — or to any namespace without its own datasource — is accepted by the API server, reconciled by the operator, and shows no data. There is no error anywhere in the chain pointing at the namespace.
+
+[source,yaml]
+----
+metadata:
+  name: dashboard-9-c-vllm-requests
+  namespace: redhat-ods-monitoring   # where the datasource lives
+----
+
+== A minimal dashboard
+
+Enough to be deployable, and nothing that is not required. It uses a variable for the model name rather than hardcoding one, which is both a CI requirement and the difference between a dashboard that works on your cluster and one that works on everyone's:
+
+[source,yaml]
+----
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  name: dashboard-9-c-vllm-requests
+  namespace: redhat-ods-monitoring
+spec:
+  config:
+    display:
+      name: "[C] - vLLM Requests"
+      description: "Running request count per vLLM model."
+    duration: 1h
+    refreshInterval: 30s
+    variables:
+      - kind: ListVariable
+        spec:
+          name: model
+          display:
+            name: Model
+          allowAllValue: true
+          allowMultiple: false
+          defaultValue: $__all
+          customAllValue: ".*"
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              datasource:
+                kind: PrometheusDatasource
+                name: data-science-prometheus-datasource
+              labelName: model_name
+              matchers:
+                - vllm:num_requests_running
+    panels:
+      runningRequests:
+        kind: Panel
+        spec:
+          display:
+            name: "Running requests"
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: sum by (model_name) (vllm:num_requests_running{model_name=~"$model"})
+    layouts:
+      - kind: Grid
+        spec:
+          display:
+            title: Requests
+            collapse:
+              open: true
+          items:
+            - content:
+                $ref: "#/spec/panels/runningRequests"
+              x: 0
+              "y": 0
+              width: 12
+              height: 8
+----
+
+Three details in that manifest are worth more than they look:
+
+`"y": 0`:: The quotes are load-bearing. YAML 1.1 parses an unquoted `y` as boolean `true`, so `y: 0` becomes the key `true` and the layout silently loses its vertical position. Quote every `y` key in `layouts`.
+
+`$ref: "#/spec/panels/runningRequests"`:: The reference resolves against the Perses dashboard spec, not the Kubernetes object. It stays `#/spec/panels/...` even though the panels sit under `spec.config.panels` in `{perses-api}`. Rewriting it to `#/spec/config/panels/...` breaks the layout.
+
+`matchers`:: Scoping label values to a metric keeps the dropdown to models that actually serve traffic instead of every `model_name` ever scraped.
+
+=== Two API versions exist
+
+[tabs]
+====
+perses.dev/v1alpha2 (current)::
++
+--
+The dashboard definition sits under `spec.config`. This is what the {rhoai-short} operator uses and what contributions should target.
+
+[source,yaml]
+----
+spec:
+  config:
+    display: {}
+    duration: 1h
+    panels: {}
+    layouts: []
+----
+--
+perses.dev/v1alpha1 (legacy)::
++
+--
+The dashboard definition sits directly under `spec`. Still accepted, and common in older examples found in the wild.
+
+[source,yaml]
+----
+spec:
+  display: {}
+  duration: 1h
+  panels: {}
+  layouts: []
+----
+
+Mixing the two in one cluster causes conflicts with the operator's reconcile, which prefers `v1alpha2`. Convert rather than copy.
+--
+====
+
+== Apply it
+
+[source,bash]
+----
+oc apply -f dashboards/<dashboard-name>/perses/
+----
+
+Confirm the resource exists:
+
+[source,bash]
+----
+oc get persesdashboards -n redhat-ods-monitoring
+----
+
+Then confirm the operator accepted it. The dashboard only becomes real once `perses-operator` has pushed it to the Perses server, and a malformed spec surfaces here rather than at apply time:
+
+[source,bash]
+----
+oc logs -n openshift-cluster-observability-operator \
+  deployment/perses-operator --tail=50 | grep -i dashboard
+----
+
+A healthy reconcile looks like this:
+
+[source,text]
+----
+info Reconciling PersesDashboard: redhat-ods-monitoring/dashboard-9-c-vllm-requests
+info Dashboard updated: dashboard-9-c-vllm-requests
+----
+
+Then open *Observe* -> *Observability* in the {rhoai-short} console. The dashboard appears as a tab, after the built-in ones, with the `[C] -` prefix on its title.
+
+== When panels are empty
+
+The dashboard rendered, so the manifest is valid and the operator is reconciling it. What is left is the data path. In order of likelihood:
+
+. *The datasource is in another namespace.* `oc get persesdatasources -n <your-dashboard-namespace>` returns nothing — move the dashboard to `{monitoring-ns}`.
+. *The metric does not exist on this cluster.* Query it directly in *Observe* -> *Metrics* with no label filters. vLLM metric names vary between runtime versions, and a metric that was renamed in a newer vLLM returns nothing without erroring.
+. *The variable matched nothing.* An empty `model` dropdown means `matchers` selected a metric with no series. The panel query then filters on an empty variable and returns no data.
+. *A label was renamed.* Metrics gained a `_total` suffix between some {rhoai-short} releases, and label names have moved too. Compare against a built-in dashboard's query for the same data.
+
+== Remove it
+
+[source,bash]
+----
+oc delete -f dashboards/<dashboard-name>/perses/
+----
+
+The operator removes it from the Perses server on reconcile and the console tab disappears. Deleting a dashboard affects no other dashboard — each one is an independent resource, which is the whole point of the one-dashboard-per-directory layout.

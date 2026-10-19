@@ -1,0 +1,101 @@
+= Contribution Guide
+
+== Does your dashboard belong here
+
+One question decides it: *does the dashboard work on a cluster that has only the {rhoai-short} Monitoring Stack?*
+
+[cols="2,1", options="header"]
+|===
+| Your dashboard | Where it goes
+
+| Queries `{perses-ds}` and nothing else
+| This repository
+
+| Needs its own exporter, recording rules, or operator to produce its metrics
+| xref:custom-dashboards.adoc#_dashboard_register[Dashboard register]
+
+| Joins several datasources, or a datasource you deploy yourself
+| Dashboard register
+
+| Ships inside a larger application and is versioned with it
+| Dashboard register
+
+| Maintains state, exposes an API, or serves its own UI
+| Neither — that is an application, not a dashboard
+|===
+
+A register entry is not a rejection. It keeps your dashboard discoverable alongside these ones while leaving you in control of a thing only you can maintain correctly. Copying an operator-versioned dashboard into this repository guarantees it goes stale on the operator's next release.
+
+== Contributing a dashboard
+
+. *Fork and branch.* Branch names describe the dashboard: `add-gpu-utilization-dashboard`.
+
+. *Create the directory.* Lowercase and hyphenated, matching the dashboard's subject rather than its format:
++
+[source,bash]
+----
+mkdir -p dashboards/gpu-utilization/perses
+----
++
+The xref:repository-structure.adoc#_the_dashboard_directory_contract[directory contract] has the full layout. At least one of `perses/` or `grafana/` is required; both is welcome and neither is mandatory.
+
+. *Use the out-of-the-box datasource.* `{perses-ds}` for Perses. CI rejects ad-hoc datasources, and a dashboard pointing at something cluster-specific cannot be deployed by anyone else.
+
+. *Parameterize the models.* A query hardcoded to `model_name="granite-3-8b"` is useful on exactly one cluster. Use a `ListVariable` — xref:deploy-perses.adoc#_a_minimal_dashboard[the minimal dashboard] shows the pattern.
+
+. *Follow the naming conventions.* `[C] -` on the display name, `dashboard-9-c-<slug>` on the resource name, `-admin` only if the dashboard is genuinely cluster-wide. See xref:custom-dashboards.adoc#_naming_and_ordering[naming and ordering].
+
+. *Deploy it on a real cluster.* Apply it, open it in the console, and confirm every panel has data. A dashboard that has only been linted has not been tested.
+
+. *Write the README.* Required sections below.
+
+. *Open a pull request* describing which cluster and which {rhoai-short} version you tested on.
+
+== The dashboard README
+
+This is the part that decides whether anyone else can use what you wrote. A dashboard with no README is a dashboard that renders empty panels on the next cluster with no way to find out why.
+
+Purpose and audience:: What question it answers and who is meant to read it. One or two sentences.
+Maintainer:: A GitHub handle or team. Not necessarily the author — whoever should be asked when it breaks.
+Tested versions:: {rhoai-short} version, and the runtime version for runtime metrics. vLLM metric names change between releases, so "vLLM 0.8.x" is useful and "recent vLLM" is not.
+Required metrics:: The metric names the dashboard queries, with the component that exports them. This is what lets someone check compatibility before deploying rather than after.
+Deployment:: The `oc apply` command and the namespace. Note anything beyond the Monitoring Stack — if there is anything, re-read the scope table above.
+Known limitations:: Panels that need a metric not everyone has, or that assume a particular model-naming scheme. Writing these down is faster than fielding the questions.
+Screenshot:: Optional, and only with sanitized data. Real model names and project names are customer identifiers.
+
+== Before you commit
+
+Remove credentials, tokens, customer and project identifiers, internal hostnames, and cluster URLs — from manifests, from screenshots, and from README examples. Dashboard JSON exported from a live Grafana carries datasource UIDs and sometimes the cluster URL; check the whole file, not the queries.
+
+Parameterize anything environment-specific. If a value has to be edited before the dashboard works, say so in the README rather than leaving the next person to find it.
+
+== Review
+
+Two gates, in this order:
+
+*Structural validation* runs automatically on the pull request: directory layout, datasource reference, naming conventions, no hardcoded models. Mechanical, and will tell you exactly what to fix.
+
+*Human review* covers what automation cannot: whether the queries are correct, whether the panels answer the stated question, and whether the dashboard duplicates one that already exists. Expect questions about metric availability on other clusters.
+
+Neither gate checks that a Perses dashboard and a Grafana dashboard with similar names show the same panels. xref:custom-dashboards.adoc#_perses_and_grafana_are_not_interchangeable[That is deliberate.] If you contribute both and they diverge, say so in the README.
+
+== Adding a register entry
+
+Add a row to the table in `dashboards/README.md`, alphabetically by dashboard name, with the source repository, the format and schema version you tested, the required data, and a maintainer handle.
+
+Entries point at repositories outside this one, so they go stale. If you find a dead link, open a pull request removing the row and say so in the description.
+
+== Documentation
+
+This site is Antora, built from `content/` and published on every merge to `main`.
+
+To preview locally:
+
+[source,bash]
+----
+npm install
+npx antora generate site.yml
+open www/index.html
+----
+
+Edits to the source documents live in `content/modules/ROOT/pages/`, with navigation in `content/modules/ROOT/nav.adoc`. A new page needs an entry in `nav.adoc` or it will not appear in the sidebar.

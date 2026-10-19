@@ -1,0 +1,101 @@
+= Custom Dashboards
+
+A custom dashboard extends or reorganizes the views {rhoai-short} provides out of the box. It might expose runtime metrics the built-in dashboards omit, apply filters and calculations specific to your organization, or pull signals from several domains into one screen arranged around the models and services you actually operate.
+
+It queries the observability data directly. A dashboard that reads from another dashboard, or that depends on a one-off exporter you ran by hand, is not a custom dashboard — it is an application, and it belongs somewhere else.
+
+== Examples in scope
+
+[cols="1,2", options="header"]
+|===
+| Dashboard | The question it answers
+
+| *Extended vLLM diagnostics*
+| Request queuing, KV cache utilization, prefix cache hit behavior, and latency distributions beyond what the built-in Perses dashboard shows. Used to explain a throughput or latency change rather than just observe it.
+
+| *GPU capacity and efficiency*
+| Where GPU utilization and memory sit relative to serving demand and workload placement, so idle capacity and resource pressure are visible before someone requests more hardware.
+
+| *Inference service objectives*
+| Latency targets, success rates, and throughput per model or service, with enough context to see which periods missed their targets.
+
+| *AI operations overview*
+| Serving performance, infrastructure health, and usage on one screen, organized around the models or projects an organization runs rather than around the components that produce the metrics.
+|===
+
+These are illustrations of the kind of contribution that fits, not an index of what the repository currently contains. Which metrics and labels are available depends on your deployed versions and configuration.
+
+== Naming and ordering
+
+Two things matter to anyone looking at a dashboard list: whether a dashboard is custom, and whether the built-in ones are still where they expect them.
+
+=== The display name carries the marker
+
+Prefix `display.name` with `[C] -`:
+
+[source,yaml]
+----
+spec:
+  config:
+    display:
+      name: "[C] - vLLM Performance Monitoring"
+----
+
+Short enough to leave room for a real title, and unambiguous next to the built-in dashboards, which carry no prefix.
+
+=== The resource name controls the order
+
+The console orders dashboards alphabetically by `metadata.name`. The name is the only ordering control there is — there is no weight or priority field. The built-in dashboards are named on a `dashboard-<n>-<slug>` scheme:
+
+[source,text]
+----
+dashboard-1-model-admin
+dashboard-2-llm-d-traffic-admin
+dashboard-3-llm-d-utilization-admin
+dashboard-4-llm-d-performance-admin
+----
+
+So a custom dashboard named `dashboard-9-c-<slug>` sorts after all of them:
+
+[source,yaml]
+----
+metadata:
+  name: dashboard-9-c-vllm-performance-monitoring
+----
+
+IMPORTANT: Use the `9` prefix rather than anything that sorts earlier. A custom dashboard that lands ahead of `dashboard-1-model-admin` makes a community contribution look like product content to someone who has never seen this repository. Reordering is possible, but the built-in dashboards keep their positions.
+
+=== The `-admin` suffix restricts visibility
+
+A dashboard whose `metadata.name` ends in `-admin` is filtered out of the console for users without `cluster-monitoring-view`. The built-in dashboards all use it.
+
+This is a console-level filter, not RBAC. It controls which tab a user sees; it does not stop anyone who can reach the Perses API from reading the dashboard, and it does not restrict the data the queries return. Use it to keep cluster-wide views out of the way of users who only run a single project — never to hide data that a user should not be able to read.
+
+[source,yaml]
+----
+metadata:
+  # cluster-wide view, administrators only
+  name: dashboard-9-c-gpu-utilization-admin
+----
+
+== Perses and Grafana are not interchangeable
+
+Both formats are welcome. Contributing one does not oblige you to contribute the other, and nothing in CI checks that a Perses dashboard and a Grafana dashboard with similar names show the same panels.
+
+That is a deliberate decision, because converting between them is lossy in one direction. Perses in the shipped {coo-short} build does not have:
+
+* *Bar gauge panels* — no horizontal bar that fills proportionally, which is the usual way to show per-model utilization at a glance
+* *Independent Y axes on one panel* — a dashboard comparing DRAM bandwidth against KV cache utilization cannot scale them separately, so a half-percent KV cache movement either disappears entirely or pins the other series to the top of the chart
+* *Table panels* — these require plugins beyond the out-of-the-box Perses install
+
+A faithful Grafana port therefore often has to be redesigned rather than translated: split one dual-axis panel into two, or replace a bar gauge with a time series. That redesign is a judgement call belonging to whoever writes the dashboard, which is exactly why automated parity checking is not attempted.
+
+TIP: If a dashboard only works well in Grafana, contribute the Grafana version alone and say so in its README. A good dashboard in one format beats a degraded pair.
+
+== Dashboard register
+
+Some dashboards cannot use the out-of-the-box datasource. A dashboard shipped alongside the operator that exports the metrics it reads is versioned with that operator and would drift the moment it was copied here. One that joins several datasources is not portable to a cluster that has only the Monitoring Stack.
+
+Those are listed in the link:{repo-url}/tree/main/dashboards#dashboard-register[dashboard register] instead: a table pointing at the repository that owns the dashboard, recording the format, the required data, and the maintainer. Entries meet the same hygiene bar as anything else here — no credentials, no customer identifiers, no internal endpoints, required metrics documented — but their authors keep maintaining them.
+
+The split is about ownership, not quality. A register entry says "this exists, it is good, and it is not ours to maintain".

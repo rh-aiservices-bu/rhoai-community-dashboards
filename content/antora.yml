@@ -1,0 +1,22 @@
+name: modules
+title: RHOAI Dashboards as Code
+version: main
+nav:
+  - modules/ROOT/nav.adoc
+
+asciidoc:
+  attributes:
+    experimental: true
+    page-pagination: true
+    source-highlighter: highlightjs
+    rhoai: "Red Hat OpenShift AI"
+    rhoai-short: "RHOAI"
+    ocp: "OpenShift Container Platform"
+    ocp-short: "OpenShift"
+    coo: "Cluster Observability Operator"
+    coo-short: "COO"
+    uwm: "User Workload Monitoring"
+    monitoring-ns: "redhat-ods-monitoring"
+    perses-ds: "data-science-prometheus-datasource"
+    perses-api: "perses.dev/v1alpha2"
+    repo-url: "https://github.com/rh-aiservices-bu/rhoai-dashboards-as-code"

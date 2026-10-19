@@ -8,8 +8,16 @@
 # script cannot make, so the two layers do not duplicate each other.
 language: en-US
 
+# Applies to reviews and chat. Keeps the review on things that break rather
+# than things that could read better.
+tone_instructions: >-
+  Report only issues that would make a dashboard render wrong data, render no
+  data, or fail to apply. Skip prose, naming style, formatting and missing
+  documentation sections unless the omission makes the dashboard unusable on
+  another cluster. Prefer a few high confidence findings over many small ones.
+
 reviews:
-  profile: chill
+  profile: quiet            # only the most important feedback
   request_changes_workflow: false
   high_level_summary: true
   review_status: true
@@ -56,6 +64,11 @@ reviews:
         naming, datasource and hardcoded models are already checked by CI, so do
         not repeat those.
 
+        Only raise something if it would give wrong data, no data, or stop the
+        dashboard applying. Two of the items below fail silently and count as
+        correctness even though they look cosmetic: an unquoted "y" key, and a
+        $ref pointing at a path that does not exist.
+
         Focus on:
         - Is the PromQL correct and does it answer the question the panel title
           and the directory README claim it answers?
@@ -84,13 +97,16 @@ reviews:
 
     - path: 'dashboards/**/README.md'
       instructions: |
-        The README is the contract for the dashboard. Check it states: purpose
-        and audience, maintainer, tested versions including the runtime version
-        for runtime metrics, required metrics with the component exporting them,
-        the deploy command, and known limitations.
+        Only flag omissions that stop someone else using the dashboard:
+        the required metric names are missing, or the runtime version they
+        depend on is absent or vague such as "recent vLLM", so compatibility
+        cannot be checked.
 
-        Flag vague version claims such as "recent vLLM". Flag any screenshot
-        that may contain real model names, project names or hostnames.
+        Also flag a screenshot that may contain real model names, project names
+        or hostnames.
+
+        Do not comment on missing purpose, audience, maintainer or limitations
+        sections, and do not comment on wording or formatting.
 
     - path: 'content/modules/ROOT/pages/*.adoc'
       instructions: |

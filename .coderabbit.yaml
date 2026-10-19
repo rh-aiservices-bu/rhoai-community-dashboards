@@ -13,8 +13,30 @@ reviews:
   request_changes_workflow: false
   high_level_summary: true
   review_status: true
-  collapse_walkthrough: false
+
+  # Noise control. Several of these are on by default and add sections that are
+  # either already visible in the diff or meaningless for dashboard YAML.
+  collapse_walkthrough: true
   poem: false
+  in_progress_fortune: false        # the ASCII art while a review runs
+  changed_files_summary: false      # the diff already lists changed files
+  estimate_code_review_effort: false
+  sequence_diagrams: false          # nothing to sequence in a dashboard CR
+
+  # All of these let CodeRabbit push commits to a contributor's branch, which is
+  # surprising on a community repo and could change someone's dashboard without
+  # them noticing. Review should comment, not edit.
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+    autofix:
+      enabled: false
+    fix_ci:
+      enabled: false
+    resolve_merge_conflict:
+      enabled: false
 
   auto_review:
     enabled: true

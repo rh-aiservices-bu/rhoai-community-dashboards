@@ -33,6 +33,8 @@ engine-side signals.
   stack; Perses server `data-science-perses`
 - vLLM-based KServe serving runtime (`llm-isvc` deployments); all metric names
   verified against the live data-science Thanos Querier at contribution time
+- Demo tooling (`load-generation/`) verified against `llm-d/llm-d-inference-sim`
+  v0.8.2 engines
 - Perses dashboard: `PersesDashboard` CR, `perses.dev/v1alpha2` (shipped COO build)
 
 ## Required metrics
@@ -80,6 +82,156 @@ Remove:
 The manifest sets `namespace: redhat-ods-monitoring` itself (the namespace that
 holds the datasource). Requires only the RHOAI Monitoring Stack - no extra
 exporters, recording rules, or operators.
+
+## Generating load (demo)
+
+The dashboard needs live traffic to be meaningful. `load-generation/` ships a
+stdlib-only generator that sends streaming OpenAI-compatible completion
+requests to any vLLM or llm-d inference-sim endpoint - no tokens required, the
+base URL is the only input.
+
+Prerequisites:
+
+    oc login --token=<token> --server=<api-url>   # values from your cluster's console login page
+    oc project <model-namespace>                  # namespace holding the model
+
+Run in-cluster (recommended - no port-forward, no local TLS setup):
+
+    oc apply -f dashboards/vllm-cache-queue-pressure/load-generation/vllm-load-gen-pod.yaml -n <model-namespace>
+    oc logs -n <model-namespace> vllm-load-gen -f
+
+Before applying, edit the Pod's `--base-url` arg and replace
+`<model-service>.<model-namespace>` with your model's in-cluster service
+(also update the same URL in the ConfigMap's embedded script banner, or just
+regenerate the ConfigMap - see below). The pod cleans itself up when the run
+finishes (`restartPolicy: Never`).
+
+Or from your laptop:
+
+    oc -n <model-namespace> port-forward svc/<model-service> 18000:8000
+    python3 dashboards/vllm-cache-queue-pressure/load-generation/vllm-load-gen.py \
+      --base-url https://localhost:18000 --concurrency 16 --ramp 120
+
+The Pod manifest embeds a copy of the script in its ConfigMap. After editing
+`vllm-load-gen.py`, regenerate the manifest so the two stay in sync - from the
+repo root:
+
+    python3 -c "
+    import yaml
+    docs = list(yaml.safe_load_all(open('dashboards/vllm-cache-queue-pressure/load-generation/vllm-load-gen-pod.yaml')))
+    cm = next(d for d in docs if d['kind'] == 'ConfigMap')
+    cm['data']['gen.py'] = open('dashboards/vllm-cache-queue-pressure/load-generation/vllm-load-gen.py').read()
+    yaml.safe_dump_all(docs, open('dashboards/vllm-cache-queue-pressure/load-generation/vllm-load-gen-pod.yaml', 'w'), sort_keys=False)"
+
+Flags that matter for the demo:
+
+- `--ramp N` alternates N seconds of load with N seconds idle - makes the
+  rate() panels rise and fall over time (the demo "mountains").
+- `--concurrency 16` is a good default against a simulator with
+  `--max-num-seqs 8`; much higher values pile up 60s+ queue times and errors.
+- `--verify-tls` if the endpoint has a real certificate (self-signed sim certs
+  are skipped by default).
+
+Give Prometheus a scrape (~30s), set the dashboard's time range to a recent
+window (e.g. Last 30m), and the panels fill in.
+
+## Appendix: configuring the llm-d sample simulators (optional)
+
+Out of the box the llm-d inference simulator reports constant latencies, no
+queueing, and zero KV-cache usage, so only the counter-based panels move under
+load. The simulator (v0.8.2) has physics knobs that make the queue and
+percentile panels track load. Apply to both engine workloads for a two-model
+demo:
+
+    --prefill-overhead 100ms
+    --prefill-time-per-token 2ms
+    --prefill-time-std-dev 0.5ms
+    --inter-token-latency 15ms
+    --inter-token-latency-std-dev 4ms
+    --time-factor-under-load 3     # latency scales x3 at max-num-seqs concurrency
+    --max-num-seqs 8               # requests beyond this wait in the queue
+    --enable-kvcache
+    --kv-cache-size 512
+    --block-size 16
+
+The simulators are `LLMInferenceService` workloads, so the flags go in the CR,
+not the Deployment (direct Deployment edits are reverted by the controller):
+
+    oc patch llminferenceservice <name> -n <model-namespace> --type=json -p \
+      '[{"op":"replace","path":"/spec/template/containers/0/args","value":[
+           "--port","8000","--model","<model>","--mode","random","--no-mm-encoder-only",
+           "--ssl-certfile","/var/run/kserve/tls/tls.crt","--ssl-keyfile","/var/run/kserve/tls/tls.key",
+           "--prefill-overhead","100ms","--prefill-time-per-token","2ms","--prefill-time-std-dev","0.5ms",
+           "--inter-token-latency","15ms","--inter-token-latency-std-dev","4ms",
+           "--time-factor-under-load","3","--max-num-seqs","8",
+           "--enable-kvcache","--kv-cache-size","512","--block-size","16"]}]'
+
+Patch the `args` path only, with a JSON patch. A merge patch
+(`--type=merge`) on `spec.template.containers` replaces the whole container
+object and silently drops its `image`, `command`, `ports`, and `env` - the
+controller then substitutes the default serving runtime and the pods crash.
+
+Caveats learned the hard way:
+
+- Standard-deviation caps: `--prefill-time-std-dev` may not exceed 30% of
+  `--prefill-time-per-token`, and `--inter-token-latency-std-dev` 30% of
+  `--inter-token-latency`. The sim exits at config read if violated.
+- After the pods roll, their new pod IPs are not in the serving certificate's
+  SAN list yet (the cert regenerates shortly after pod start, but the sim
+  loads it at startup), so the OpenTelemetry collector's scrapes fail TLS
+  verification. Setting `insecureSkipVerify: true` on the engine's PodMonitor
+  restores scraping immediately (certs are self-signed; traffic stays
+  encrypted):
+
+      oc patch podmonitor <engine-podmonitor> -n <model-namespace> --type=json -p \
+        '[{"op":"replace","path":"/spec/podMetricsEndpoints/0/tlsConfig/insecureSkipVerify","value":true}]'
+
+- If the target allocator dropped the engine's scrape jobs entirely (symptom:
+  `vllm:*` metrics vanish from the Thanos Querier after a pod restart; check
+  `oc logs -n redhat-ods-monitoring \
+     -l app.kubernetes.io/component=opentelemetry-targetallocator | grep -i skipping`),
+  the collector's service account lacks RBAC to read the TLS secret. Grant it,
+  then restart the target allocator pods so the watcher re-runs:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: data-science-collector-secrets-reader
+  namespace: <model-namespace>
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: data-science-collector-secrets-reader
+  namespace: <model-namespace>
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: data-science-collector-secrets-reader
+subjects:
+  - kind: ServiceAccount
+    name: data-science-collector-collector
+    namespace: redhat-ods-monitoring
+```
+
+What moves with these knobs, and what does not: prefill/ITL/decode p90 and
+waiting requests rise and fall with load; the sim's percentile values are
+quantized to fixed histogram buckets, so lines step rather than curve; the
+KV-cache gauge stays flat on this simulator build - that panel needs a real
+vLLM engine.
+
+Revert by re-patching the CR args back to the originals, setting
+`insecureSkipVerify` back to `false`, and deleting the Role/RoleBinding:
+
+    oc delete role data-science-collector-secrets-reader -n <model-namespace>
+    oc delete rolebinding data-science-collector-secrets-reader -n <model-namespace>
+    oc delete role data-science-collector-secrets-reader -n redhat-ods-monitoring
+    oc delete rolebinding data-science-collector-secrets-reader -n redhat-ods-monitoring
 
 ## Known limitations
 

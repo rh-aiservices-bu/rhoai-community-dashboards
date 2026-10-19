@@ -1,0 +1,92 @@
+# CodeRabbit configuration.
+# Reference: https://docs.coderabbit.ai/guides/configure-coderabbit
+#
+# Scope note: the deterministic rules (directory layout, datasource,
+# naming, hardcoded models) are enforced by
+# validation/scripts/validate_dashboards.py in the "validate dashboards"
+# workflow, not here. CodeRabbit is asked for the judgement calls that a
+# script cannot make, so the two layers do not duplicate each other.
+language: en-US
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  collapse_walkthrough: false
+  poem: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+
+  path_filters:
+    - '!www/**'
+    - '!**/*.png'
+    - '!**/*.ico'
+    - '!**/*.excalidraw'
+    - '!package-lock.json'
+
+  path_instructions:
+    - path: 'dashboards/**/perses/*.yaml'
+      instructions: |
+        Review this Perses dashboard CR for correctness, not style. Structure,
+        naming, datasource and hardcoded models are already checked by CI, so do
+        not repeat those.
+
+        Focus on:
+        - Is the PromQL correct and does it answer the question the panel title
+          and the directory README claim it answers?
+        - Rate vs counter mistakes: raw counters plotted without rate() or
+          increase(), or rate() applied to a gauge.
+        - Aggregations that drop a label they should keep, or keep one that
+          makes the series meaningless.
+        - Variables declared but never used in any query, or used in a query but
+          never declared.
+        - Layout references: $ref must point at a panel key that exists. On
+          perses.dev/v1alpha2 the ref stays "#/spec/panels/<key>" even though
+          panels live under spec.config.panels.
+        - Unquoted "y" keys in layouts. YAML 1.1 parses y as boolean true, which
+          silently loses the vertical position.
+        - Whether the stated metric names look plausible for the component named
+          in the README, flagging that vLLM metric names move between runtime
+          versions.
+
+    - path: 'dashboards/**/grafana/*.json'
+      instructions: |
+        Check the dashboard JSON for a pinned datasource UID or an embedded
+        cluster URL, which are environment specific and must be parameterized.
+        Flag any leftover customer or project identifier in panel titles,
+        annotations or descriptions. Comment on whether panels use template
+        variables rather than fixed model names.
+
+    - path: 'dashboards/**/README.md'
+      instructions: |
+        The README is the contract for the dashboard. Check it states: purpose
+        and audience, maintainer, tested versions including the runtime version
+        for runtime metrics, required metrics with the component exporting them,
+        the deploy command, and known limitations.
+
+        Flag vague version claims such as "recent vLLM". Flag any screenshot
+        that may contain real model names, project names or hostnames.
+
+    - path: 'content/modules/ROOT/pages/*.adoc'
+      instructions: |
+        Documentation prose. Check technical claims against the rest of the
+        repository and flag anything that overstates what exists, in particular
+        describing CI checks or scripts that are not implemented.
+
+        Style: no em dashes, they read as machine written. Prefer colons,
+        semicolons, commas or separate sentences. Keep AsciiDoc cross references
+        valid and do not break the "--" open block delimiters used by the tabs
+        extension.
+
+    - path: 'validation/scripts/**'
+      instructions: |
+        These run in CI against contributor pull requests. Review error handling
+        and whether a failure message tells the contributor exactly what to fix.
+        Flag rules that would reject a legitimate contribution, and any check
+        that depends on cluster state rather than repository content.
+
+chat:
+  auto_reply: true

@@ -78,11 +78,51 @@ This is a constraint on contributions, not a limitation of the tooling. A dashbo
 
 == What CI checks
 
-Structural validation runs on every pull request:
+Two layers run on every pull request, and they are deliberately separate.
+
+=== Structural validation, which gates the merge
+
+`validation/scripts/validate_dashboards.sh` runs in the *validate dashboards*
+workflow. Every rule it enforces has exactly one right answer, so none of it
+needs a language model:
 
 * The directory layout matches the contract above. A dashboard directory with no `README.md`, or with neither `perses/` nor `grafana/`, fails
-* Dashboard manifests reference the out-of-the-box datasource rather than an ad-hoc one
-* Queries are not hardcoded to a single model name where a variable would work
-* Naming follows the xref:custom-dashboards.adoc#_naming_and_ordering[naming and ordering conventions]
+* `metadata.namespace` is `{monitoring-ns}`, because a `PersesDatasource` is project-scoped
+* Every `datasource.name`, at any depth, is `{perses-ds}` rather than an ad-hoc one
+* `metadata.name` matches `dashboard-9-c-<slug>[-admin]` and `display.name` carries the `[C] - ` prefix
+* `apiVersion` is `{perses-api}`; `v1alpha1` is a warning rather than an error
+* No query pins `model_name` or `model` to a literal where a variable would work
+* Grafana directories contain parseable JSON
 
-CI does not check that a Perses dashboard and its Grafana counterpart are equivalent, and it does not validate PromQL against a live cluster. Both need a cluster with your metrics on it, which is the reviewer's job and yours.
+Run it yourself before opening a pull request. It needs `yq` and `jq`:
+
+[source,bash]
+----
+./validation/scripts/validate_dashboards.sh
+----
+
+=== Advisory AI review, which does not gate anything
+
+`validation/scripts/ai_review.sh` sends the diff to a model on RHOAI
+Models-as-a-Service and posts the result as a pull request comment. It is asked
+only for judgement that a script cannot provide: whether the PromQL is correct,
+whether a counter is plotted without `rate()`, whether a `$ref` points at a
+panel that exists, whether a variable is declared but never used.
+
+It never fails the build. If the endpoint is unreachable, or the pull request
+comes from a fork and therefore has no access to secrets, the job says so and
+passes.
+
+`.coderabbit.yaml` configures the same division of labour for CodeRabbit, whose
+review instructions explicitly tell it not to repeat the deterministic checks.
+
+NOTE: CodeRabbit's hosted app runs its own models and has no setting for a
+custom endpoint, so it cannot be pointed at a self-managed Models-as-a-Service
+deployment. That is why the advisory review is a separate job rather than
+CodeRabbit configuration. The two coexist.
+
+=== What neither layer does
+
+Neither checks that a Perses dashboard and its Grafana counterpart are
+equivalent, and neither validates PromQL against a live cluster. Both need a
+cluster with your metrics on it, which is the reviewer's job and yours.

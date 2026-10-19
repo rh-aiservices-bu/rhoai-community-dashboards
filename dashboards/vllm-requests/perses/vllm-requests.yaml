@@ -1,0 +1,67 @@
+# Example dashboard. This manifest is the one documented at
+# https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/deploy-perses.html
+# Keep the two in sync: it is the reference contributors copy from.
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  name: dashboard-9-c-vllm-requests
+  namespace: redhat-ods-monitoring
+spec:
+  config:
+    display:
+      name: "[C] - vLLM Requests"
+      description: "Running request count per vLLM model."
+    duration: 1h
+    refreshInterval: 30s
+    variables:
+      - kind: ListVariable
+        spec:
+          name: model
+          display:
+            name: Model
+          allowAllValue: true
+          allowMultiple: false
+          defaultValue: $__all
+          customAllValue: ".*"
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              datasource:
+                kind: PrometheusDatasource
+                name: data-science-prometheus-datasource
+              labelName: model_name
+              matchers:
+                - vllm:num_requests_running
+    panels:
+      runningRequests:
+        kind: Panel
+        spec:
+          display:
+            name: "Running requests"
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: sum by (model_name) (vllm:num_requests_running{model_name=~"$model"})
+    layouts:
+      - kind: Grid
+        spec:
+          display:
+            title: Requests
+            collapse:
+              open: true
+          items:
+            - content:
+                $ref: "#/spec/panels/runningRequests"
+              x: 0
+              "y": 0
+              width: 12
+              height: 8

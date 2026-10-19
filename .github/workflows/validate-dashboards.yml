@@ -1,0 +1,39 @@
+name: validate dashboards
+
+on:
+  pull_request:
+    paths:
+      - 'dashboards/**'
+      - 'validation/**'
+      - '.github/workflows/validate-dashboards.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'dashboards/**'
+      - 'validation/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  YQ_VERSION: v4.44.3
+
+jobs:
+  structure:
+    name: structural contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned rather than relying on whatever the runner image ships, so the
+      # result cannot change under us when the image is updated.
+      - name: install yq
+        run: |
+          curl -sSL -o /usr/local/bin/yq \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: validate
+        run: ./validation/scripts/validate_dashboards.sh

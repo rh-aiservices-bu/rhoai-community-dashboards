@@ -20,9 +20,6 @@ Keeping those answers in Git rather than clicking them together in a UI means th
 |===
 | Page | What it covers
 
-| xref:rhoai-monitoring.adoc[The RHOAI Monitoring Stack]
-| What the platform deploys and where dashboard data comes from: the collector, the discovery label, Thanos, retention, and the two access views
-
 | xref:custom-dashboards.adoc[Custom Dashboards]
 | What counts as a custom dashboard, the naming and ordering conventions that keep them distinguishable from the built-in ones, and how Perses and Grafana differ in practice
 
@@ -31,6 +28,9 @@ Keeping those answers in Git rather than clicking them together in a UI means th
 
 | xref:deploy-perses.adoc[Deploy a Perses Dashboard]
 | Verifying the Monitoring Stack, applying a `PersesDashboard`, and the namespace and YAML traps that cost the most time
+
+| xref:rhoai-monitoring.adoc[The RHOAI Monitoring Stack]
+| What the platform deploys and where dashboard data comes from: the collector, the discovery label, Thanos, retention, and the two access views
 
 | xref:contributing.adoc[Contribution Guide]
 | The bar a contribution has to meet, the review workflow, and what to do when your dashboard does not fit the standard shape

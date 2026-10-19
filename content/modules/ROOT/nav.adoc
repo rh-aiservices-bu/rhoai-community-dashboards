@@ -1,12 +1,14 @@
 * xref:index.adoc[Overview]
 
 .Concepts
-* xref:rhoai-monitoring.adoc[The RHOAI Monitoring Stack]
 * xref:custom-dashboards.adoc[Custom Dashboards]
 * xref:repository-structure.adoc[Repository Structure]
 
 .Deploying
 * xref:deploy-perses.adoc[Deploy a Perses Dashboard]
+
+.Reference
+* xref:rhoai-monitoring.adoc[The RHOAI Monitoring Stack]
 
 .Contributing
 * xref:contributing.adoc[Contribution Guide]

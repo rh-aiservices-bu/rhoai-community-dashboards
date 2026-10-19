@@ -9,10 +9,10 @@ Keep dashboard definitions and application source code in Git, adapt them to you
 | Guide | What it covers |
 |-------|----------------|
 | [Overview](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/index.html) | What this repository is for and what it requires |
-| [The RHOAI Monitoring Stack](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/rhoai-monitoring.html) | What the platform deploys and where dashboard data comes from |
 | [Custom Dashboards](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/custom-dashboards.html) | Naming and ordering conventions, Perses vs Grafana, the dashboard register |
 | [Repository Structure](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/repository-structure.html) | Directory layout, the dashboard directory contract, what CI checks |
 | [Deploy a Perses Dashboard](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/deploy-perses.html) | Verifying the Monitoring Stack, applying a `PersesDashboard`, troubleshooting |
+| [The RHOAI Monitoring Stack](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/rhoai-monitoring.html) | What the platform deploys and where dashboard data comes from |
 | [Contribution Guide](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/contributing.html) | Scope, workflow, the README each dashboard needs, review gates |
 
 ## What is a custom dashboard?

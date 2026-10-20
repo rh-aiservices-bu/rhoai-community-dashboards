@@ -38,7 +38,14 @@ spec:
             description: "Generated tokens per second across all replicas. Rises and falls with demand - the traffic dimension that drives cache pressure."
           plugin:
             kind: TimeSeriesChart
-            spec: {}
+            spec:
+              legend:
+                mode: list
+                position: bottom
+                values:
+                  - last
+                  - max
+                  - mean
           queries:
             - kind: TimeSeriesQuery
               spec:
@@ -57,7 +64,22 @@ spec:
             description: "Fraction of GPU KV cache blocks in use, worst replica per model. Sustained values near 100% mean the engine is out of cache: new requests queue and running ones can be preempted."
           plugin:
             kind: TimeSeriesChart
-            spec: {}
+            spec:
+              legend:
+                mode: list
+                position: bottom
+                values:
+                  - last
+                  - max
+                  - mean
+              thresholds:
+                steps:
+                  - value: 0
+                    color: green
+                  - value: 80
+                    color: orange
+                  - value: 95
+                    color: red
           queries:
             - kind: TimeSeriesQuery
               spec:
@@ -76,7 +98,14 @@ spec:
             description: "Time between consecutive streamed output tokens, p90 per model. Spikes indicate the engine is struggling: cache thrash, preemption recompute, or GPU contention, even when the built-in dashboards show nothing wrong."
           plugin:
             kind: TimeSeriesChart
-            spec: {}
+            spec:
+              legend:
+                mode: list
+                position: bottom
+                values:
+                  - last
+                  - max
+                  - mean
           queries:
             - kind: TimeSeriesQuery
               spec:
@@ -95,7 +124,14 @@ spec:
             description: "Where engine time goes: time spent in the PREFILL vs DECODE phase per request, p90. Rising prefill suggests longer prompts or a cold cache; rising decode suggests long generations or memory pressure."
           plugin:
             kind: TimeSeriesChart
-            spec: {}
+            spec:
+              legend:
+                mode: list
+                position: bottom
+                values:
+                  - last
+                  - max
+                  - mean
           queries:
             - kind: TimeSeriesQuery
               spec:
@@ -123,7 +159,74 @@ spec:
             description: "Requests queued and not yet running. Read it next to KV cache utilization: rising waiting with flat traffic means cache pressure, not demand growth."
           plugin:
             kind: TimeSeriesChart
-            spec: {}
+            spec:
+              legend:
+                mode: list
+                position: bottom
+                values:
+                  - last
+                  - max
+                  - mean
+              thresholds:
+                steps:
+                  - value: 0
+                    color: green
+                  - value: 1
+                    color: red
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: sum by (model_name) (vllm:num_requests_waiting{model_name=~"$model"})
+      kvCacheGauge:
+        kind: Panel
+        spec:
+          display:
+            name: "KV cache utilization %"
+            description: "Current fraction of GPU KV cache blocks in use, worst replica per model. The gauge color tracks the thresholds: green below 80%, amber 80-95%, red at 95% or above."
+          plugin:
+            kind: GaugeChart
+            spec:
+              calculation: last-number
+              thresholds:
+                steps:
+                  - value: 0
+                    color: green
+                  - value: 80
+                    color: orange
+                  - value: 95
+                    color: red
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: 100 * max by (model_name) (vllm:kv_cache_usage_perc{model_name=~"$model"})
+      waitingRequestsGauge:
+        kind: Panel
+        spec:
+          display:
+            name: "Waiting requests"
+            description: "Requests queued and not yet running, summed per model. Any nonzero value turns the gauge red: the engine is queueing, typically because the KV cache is full."
+          plugin:
+            kind: GaugeChart
+            spec:
+              calculation: last-number
+              thresholds:
+                steps:
+                  - value: 0
+                    color: green
+                  - value: 1
+                    color: red
           queries:
             - kind: TimeSeriesQuery
               spec:
@@ -138,7 +241,26 @@ spec:
       - kind: Grid
         spec:
           display:
-            title: Cache & queue pressure
+            title: Current state
+            collapse:
+              open: true
+          items:
+            - content:
+                $ref: "#/spec/panels/kvCacheGauge"
+              x: 0
+              "y": 0
+              width: 6
+              height: 8
+            - content:
+                $ref: "#/spec/panels/waitingRequestsGauge"
+              x: 6
+              "y": 0
+              width: 6
+              height: 8
+      - kind: Grid
+        spec:
+          display:
+            title: Trends
             collapse:
               open: true
           items:

@@ -240,8 +240,8 @@ cluster-wide.
 What moves with these knobs, and what does not: prefill/ITL/decode p90 and
 waiting requests rise and fall with load; the sim's percentile values are
 quantized to fixed histogram buckets, so lines step rather than curve; the
-KV-cache gauge stays flat on this simulator build - that panel needs a real
-vLLM engine.
+KV-cache line stays flat on this simulator build - that metric needs a real
+vLLM engine (the Current-state gauge reads the same flat value).
 
 Revert by re-patching the CR args back to the originals, setting
 `insecureSkipVerify` back to `false`, and deleting the Role/RoleBinding:

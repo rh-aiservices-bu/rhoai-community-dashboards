@@ -54,7 +54,7 @@ IMPORTANT: Deploy custom dashboards into `{monitoring-ns}`, the namespace that h
 [source,yaml]
 ----
 metadata:
-  name: dashboard-9-c-vllm-requests
+  name: dashboard-99-vllm-requests
   namespace: redhat-ods-monitoring   # where the datasource lives
 ----
 
@@ -67,7 +67,7 @@ Enough to be deployable, and nothing that is not required. It uses a variable fo
 apiVersion: perses.dev/v1alpha2
 kind: PersesDashboard
 metadata:
-  name: dashboard-9-c-vllm-requests
+  name: dashboard-99-vllm-requests
   namespace: redhat-ods-monitoring
 spec:
   config:
@@ -201,8 +201,8 @@ A healthy reconcile looks like this:
 
 [source,text]
 ----
-info Reconciling PersesDashboard: redhat-ods-monitoring/dashboard-9-c-vllm-requests
-info Dashboard updated: dashboard-9-c-vllm-requests
+info Reconciling PersesDashboard: redhat-ods-monitoring/dashboard-99-vllm-requests
+info Dashboard updated: dashboard-99-vllm-requests
 ----
 
 Then open *Observe* -> *Observability* in the {rhoai-short} console. The dashboard appears as a tab, after the built-in ones, with the `[C] -` prefix on its title.

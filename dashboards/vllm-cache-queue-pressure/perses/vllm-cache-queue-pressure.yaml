@@ -197,9 +197,9 @@ spec:
                 steps:
                   - value: 0
                     color: green
-                  - value: 80
+                  - value: 0.8
                     color: orange
-                  - value: 95
+                  - value: 0.95
                     color: red
           queries:
             - kind: TimeSeriesQuery
@@ -210,13 +210,13 @@ spec:
                     datasource:
                       kind: PrometheusDatasource
                       name: data-science-prometheus-datasource
-                    query: 100 * max by (model_name) (vllm:kv_cache_usage_perc{model_name=~"$model"})
+                    query: max by (model_name) (vllm:kv_cache_usage_perc{model_name=~"$model"})
       waitingRequestsGauge:
         kind: Panel
         spec:
           display:
             name: "Waiting requests"
-            description: "Requests queued and not yet running, summed per model. Any nonzero value turns the gauge red: the engine is queueing, typically because the KV cache is full."
+            description: "Requests queued and not yet running, summed per model. The gauge renders the count on a percent-style scale: 21 waiting shows as 21%. Any nonzero value turns the gauge red: the engine is queueing, typically because the KV cache is full."
           plugin:
             kind: GaugeChart
             spec:
@@ -225,7 +225,7 @@ spec:
                 steps:
                   - value: 0
                     color: green
-                  - value: 1
+                  - value: 0.01
                     color: red
           queries:
             - kind: TimeSeriesQuery
@@ -236,7 +236,7 @@ spec:
                     datasource:
                       kind: PrometheusDatasource
                       name: data-science-prometheus-datasource
-                    query: sum by (model_name) (vllm:num_requests_waiting{model_name=~"$model"})
+                    query: sum by (model_name) (vllm:num_requests_waiting{model_name=~"$model"}) / 100
     layouts:
       - kind: Grid
         spec:

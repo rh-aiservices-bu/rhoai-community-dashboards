@@ -89,7 +89,7 @@ needs a language model:
 * The directory layout matches the contract above. A dashboard directory with no `README.md`, or with neither `perses/` nor `grafana/`, fails
 * `metadata.namespace` is `{monitoring-ns}`, because a `PersesDatasource` is project-scoped
 * Every `datasource.name`, at any depth, is `{perses-ds}` rather than an ad-hoc one
-* `metadata.name` matches `dashboard-9-c-<slug>[-admin]` and `display.name` carries the `[C] - ` prefix
+* `metadata.name` matches `dashboard-99-<slug>[-admin]` and `display.name` carries the `[C] - ` prefix
 * `apiVersion` is `{perses-api}`; `v1alpha1` is a warning rather than an error
 * No query pins `model_name` or `model` to a literal where a variable would work
 * Grafana directories contain parseable JSON

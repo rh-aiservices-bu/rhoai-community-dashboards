@@ -24,15 +24,15 @@ data:
     #    The rate() panels need a scrape or two: give them ~1 minute.\n\nLoad pattern\n\
     ------------\nSteady mode keeps `--concurrency` workers busy for `--duration`\
     \ seconds.\nBurst mode (--burst-every N) fires a synchronized wave of one request\
-    \ per\nworker every N seconds on top of steady traffic - waves momentarily exceed\
-    \ the\nengine's batch capacity and push `num_requests_waiting` above zero.\n\n\
-    Prompts are `--prompt-words` words long (exercises prefill; KV cache usage\nrises\
-    \ with prompt + generation length) and each request generates up to\n`--max-tokens`\
-    \ streamed tokens.\n\"\"\"\n\nimport argparse\nimport http.client\nimport json\n\
-    import ssl\nimport sys\nimport threading\nimport time\nfrom urllib.parse import\
-    \ urlparse\n\nSTOP = threading.Event()\nSTATS = {\"ok\": 0, \"err\": 0, \"tokens\"\
-    : 0, \"e2e\": []}\nSTATS_LOCK = threading.Lock()\n\n\ndef parse_args():\n    p\
-    \ = argparse.ArgumentParser(description=__doc__.splitlines()[0])\n    p.add_argument(\"\
+    \ per\nworker every N seconds on a shared clock - long requests from an earlier\
+    \ wave\noverlap into later ones, stacking queue pressure until `num_requests_waiting`\n\
+    climbs above zero.\n\nPrompts are `--prompt-words` words long (exercises prefill;\
+    \ KV cache usage\nrises with prompt + generation length) and each request generates\
+    \ up to\n`--max-tokens` streamed tokens.\n\"\"\"\n\nimport argparse\nimport http.client\n\
+    import json\nimport ssl\nimport sys\nimport threading\nimport time\nfrom urllib.parse\
+    \ import urlparse\n\nSTOP = threading.Event()\nSTATS = {\"ok\": 0, \"err\": 0,\
+    \ \"tokens\": 0, \"e2e\": []}\nSTATS_LOCK = threading.Lock()\n\n\ndef parse_args():\n\
+    \    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])\n    p.add_argument(\"\
     --base-url\", default=\"https://localhost:8000\",\n                   help=\"\
     scheme://host:port of the model endpoint (default %(default)s)\")\n    p.add_argument(\"\
     --model\", default=None,\n                   help=\"model name; defaults to the\
@@ -71,72 +71,68 @@ data:
     utf-8\", \"replace\").strip()\n        if line.startswith(\"data:\"):\n      \
     \      payload = line[5:].strip()\n            if payload == \"[DONE]\":\n   \
     \             break\n            tokens += 1\n    return tokens\n\n\ndef worker(args,\
-    \ parsed, model, prompt, end_at, barrier, burst_every):\n    body = json.dumps({\n\
-    \        \"model\": model,\n        \"prompt\": prompt,\n        \"max_tokens\"\
-    : args.max_tokens,\n        \"temperature\": 0.7,\n        \"stream\": True,\n\
-    \    }).encode()\n    headers = {\"Content-Type\": \"application/json\",\n   \
-    \            # some proxies require an Authorization header; the endpoint\n  \
-    \             # does not validate it - \"unused\" is a literal placeholder\n \
-    \              \"Authorization\": \"Bearer unused\"}\n    conn = make_connection(parsed,\
-    \ args.verify_tls)\n    last_used = 0.0\n    wave = 0\n    while not STOP.is_set()\
-    \ and time.time() < end_at:\n        if args.ramp:\n            # on/off cycles:\
-    \ full cycle = 2 * ramp, first half loads, second half idles\n            cycle\
-    \ = (time.time() - start_time()) % (2 * args.ramp)\n            if cycle >= args.ramp:\n\
-    \                if STOP.wait(min(2 * args.ramp - cycle, end_at - time.time())):\n\
-    \                    break\n                continue\n        if burst_every and\
-    \ barrier:\n            # align to the next wave, then fire together\n       \
-    \     target = (wave + 1) * burst_every\n            delay = target - (time.time()\
-    \ - start_time())\n            if delay > 0 and STOP.wait(min(delay, burst_every)):\n\
-    \                break\n            try:\n                barrier.wait(timeout=5)\n\
-    \            except threading.BrokenBarrierError:\n                pass\n    \
-    \        wave += 1\n        if time.time() - last_used > 10:\n            # server\
-    \ keep-alive closes idle connections: reconnect before sending\n            try:\n\
-    \                conn.close()\n            except Exception:\n               \
-    \ pass\n            conn = make_connection(parsed, args.verify_tls)\n        attempt\
-    \ = 0\n        while True:\n            t0 = time.time()\n            try:\n \
-    \               conn.request(\"POST\", \"/v1/completions\", body=body, headers=headers)\n\
-    \                resp = conn.getresponse()\n                if resp.status !=\
-    \ 200:\n                    raise IOError(f\"HTTP {resp.status}\")\n         \
-    \       tokens = stream_response(resp)\n                with STATS_LOCK:\n   \
-    \                 STATS[\"ok\"] += 1\n                    STATS[\"tokens\"] +=\
-    \ tokens\n                    STATS[\"e2e\"].append(time.time() - t0)\n      \
-    \          if resp.will_close:\n                    conn.close()\n           \
-    \         conn = make_connection(parsed, args.verify_tls)\n                  \
-    \  last_used = time.time()\n                break\n            except Exception:\n\
-    \                attempt += 1\n                try:\n                    conn.close()\n\
-    \                except Exception:\n                    pass\n               \
-    \ conn = make_connection(parsed, args.verify_tls)\n                if attempt\
-    \ >= 2:\n                    with STATS_LOCK:\n                        STATS[\"\
-    err\"] += 1\n                    STOP.wait(1)\n                    break\n   \
-    \     last_used = time.time()\n    try:\n        conn.close()\n    except Exception:\n\
-    \        pass\n\n\n_START = time.time()\n\n\ndef start_time():\n    return _START\n\
-    \n\ndef main():\n    global _START\n    args = parse_args()\n    parsed = urlparse(args.base_url)\n\
-    \    if not parsed.hostname:\n        sys.exit(f\"--base-url must look like scheme://host:port,\
-    \ got: {args.base_url}\")\n\n    model = args.model or detect_model(parsed, args.verify_tls)\n\
-    \    prompt = build_prompt(args.prompt_words)\n    end_at = time.time() + args.duration\n\
-    \    barrier = threading.Barrier(args.concurrency) if args.burst_every else None\n\
-    \n    print(f\"endpoint      : {parsed.geturl()}\")\n    print(f\"model      \
-    \   : {model}\")\n    print(f\"pattern       : concurrency={args.concurrency}\
+    \ parsed, model, prompt, end_at, burst_every):\n    body = json.dumps({\n    \
+    \    \"model\": model,\n        \"prompt\": prompt,\n        \"max_tokens\": args.max_tokens,\n\
+    \        \"temperature\": 0.7,\n        \"stream\": True,\n    }).encode()\n \
+    \   headers = {\"Content-Type\": \"application/json\",\n               # some\
+    \ proxies require an Authorization header; the endpoint\n               # does\
+    \ not validate it - \"unused\" is a literal placeholder\n               \"Authorization\"\
+    : \"Bearer unused\"}\n    conn = make_connection(parsed, args.verify_tls)\n  \
+    \  last_used = 0.0\n    while not STOP.is_set() and time.time() < end_at:\n  \
+    \      if args.ramp:\n            # on/off cycles: full cycle = 2 * ramp, first\
+    \ half loads, second half idles\n            cycle = (time.time() - start_time())\
+    \ % (2 * args.ramp)\n            if cycle >= args.ramp:\n                if STOP.wait(min(2\
+    \ * args.ramp - cycle, end_at - time.time())):\n                    break\n  \
+    \              continue\n        if burst_every:\n            # align to the next\
+    \ wave boundary on the shared clock, then fire;\n            # a request that\
+    \ outlives a wave simply joins the next one\n            delay = burst_every -\
+    \ ((time.time() - start_time()) % burst_every)\n            if delay > 0 and STOP.wait(min(delay,\
+    \ burst_every)):\n                break\n        if time.time() - last_used >\
+    \ 10:\n            # server keep-alive closes idle connections: reconnect before\
+    \ sending\n            try:\n                conn.close()\n            except\
+    \ Exception:\n                pass\n            conn = make_connection(parsed,\
+    \ args.verify_tls)\n        attempt = 0\n        while True:\n            t0 =\
+    \ time.time()\n            try:\n                conn.request(\"POST\", \"/v1/completions\"\
+    , body=body, headers=headers)\n                resp = conn.getresponse()\n   \
+    \             if resp.status != 200:\n                    raise IOError(f\"HTTP\
+    \ {resp.status}\")\n                tokens = stream_response(resp)\n         \
+    \       with STATS_LOCK:\n                    STATS[\"ok\"] += 1\n           \
+    \         STATS[\"tokens\"] += tokens\n                    STATS[\"e2e\"].append(time.time()\
+    \ - t0)\n                if resp.will_close:\n                    conn.close()\n\
+    \                    conn = make_connection(parsed, args.verify_tls)\n       \
+    \             last_used = time.time()\n                break\n            except\
+    \ Exception:\n                attempt += 1\n                try:\n           \
+    \         conn.close()\n                except Exception:\n                  \
+    \  pass\n                conn = make_connection(parsed, args.verify_tls)\n   \
+    \             if attempt >= 2:\n                    with STATS_LOCK:\n       \
+    \                 STATS[\"err\"] += 1\n                    STOP.wait(1)\n    \
+    \                break\n        last_used = time.time()\n    try:\n        conn.close()\n\
+    \    except Exception:\n        pass\n\n\n_START = time.time()\n\n\ndef start_time():\n\
+    \    return _START\n\n\ndef main():\n    global _START\n    args = parse_args()\n\
+    \    parsed = urlparse(args.base_url)\n    if not parsed.hostname:\n        sys.exit(f\"\
+    --base-url must look like scheme://host:port, got: {args.base_url}\")\n\n    model\
+    \ = args.model or detect_model(parsed, args.verify_tls)\n    prompt = build_prompt(args.prompt_words)\n\
+    \    end_at = time.time() + args.duration\n\n    print(f\"endpoint      : {parsed.geturl()}\"\
+    )\n    print(f\"model         : {model}\")\n    print(f\"pattern       : concurrency={args.concurrency}\
     \ duration={args.duration}s \"\n          f\"max_tokens={args.max_tokens} prompt_words={args.prompt_words}\
     \ \"\n          f\"burst_every={args.burst_every or 0}s\")\n    print(\"ctrl-c\
     \ to stop early\\n\")\n\n    threads = [threading.Thread(target=worker,\n    \
-    \                            args=(args, parsed, model, prompt, end_at, barrier,\
-    \ args.burst_every),\n                                daemon=True)\n         \
-    \      for _ in range(args.concurrency)]\n    _START = time.time()\n    for t\
-    \ in threads:\n        t.start()\n\n    try:\n        next_report = time.time()\
-    \ + 15\n        while any(t.is_alive() for t in threads):\n            if STOP.wait(0.5):\n\
-    \                break\n            now = time.time()\n            if now >= next_report:\n\
-    \                with STATS_LOCK:\n                    print(f\"  {int(_START\
-    \ and now - _START):4}s  ok={STATS['ok']:5}  \"\n                          f\"\
-    err={STATS['err']:3}  tokens={STATS['tokens']}\")\n                next_report\
-    \ = now + 15\n    except KeyboardInterrupt:\n        print(\"\\nstopping early...\"\
-    )\n        STOP.set()\n\n    for t in threads:\n        t.join(timeout=30)\n\n\
-    \    e2e = sorted(STATS[\"e2e\"])\n    if e2e:\n        p50 = e2e[len(e2e) //\
-    \ 2]\n        p90 = e2e[int(len(e2e) * 0.9)]\n    else:\n        p50 = p90 = 0.0\n\
-    \    print(f\"\\ndone: ok={STATS['ok']}  err={STATS['err']}  tokens={STATS['tokens']}\
-    \  \"\n          f\"e2e p50={p50:.2f}s  p90={p90:.2f}s\")\n    print(\"give Prometheus\
-    \ a scrape (~30s), then check the dashboard panels.\")\n\n\nif __name__ == \"\
-    __main__\":\n    main()\n"
+    \                            args=(args, parsed, model, prompt, end_at, args.burst_every),\n\
+    \                                daemon=True)\n               for _ in range(args.concurrency)]\n\
+    \    _START = time.time()\n    for t in threads:\n        t.start()\n\n    try:\n\
+    \        next_report = time.time() + 15\n        while any(t.is_alive() for t\
+    \ in threads):\n            if STOP.wait(0.5):\n                break\n      \
+    \      now = time.time()\n            if now >= next_report:\n               \
+    \ with STATS_LOCK:\n                    print(f\"  {int(_START and now - _START):4}s\
+    \  ok={STATS['ok']:5}  \"\n                          f\"err={STATS['err']:3} \
+    \ tokens={STATS['tokens']}\")\n                next_report = now + 15\n    except\
+    \ KeyboardInterrupt:\n        print(\"\\nstopping early...\")\n        STOP.set()\n\
+    \n    for t in threads:\n        t.join(timeout=30)\n\n    e2e = sorted(STATS[\"\
+    e2e\"])\n    if e2e:\n        p50 = e2e[len(e2e) // 2]\n        p90 = e2e[int(len(e2e)\
+    \ * 0.9)]\n    else:\n        p50 = p90 = 0.0\n    print(f\"\\ndone: ok={STATS['ok']}\
+    \  err={STATS['err']}  tokens={STATS['tokens']}  \"\n          f\"e2e p50={p50:.2f}s\
+    \  p90={p90:.2f}s\")\n    print(\"give Prometheus a scrape (~30s), then check\
+    \ the dashboard panels.\")\n\n\nif __name__ == \"__main__\":\n    main()\n"
 ---
 apiVersion: v1
 kind: Pod
@@ -148,7 +144,6 @@ spec:
   restartPolicy: Never
   securityContext:
     runAsNonRoot: true
-    runAsUser: 1000
     seccompProfile:
       type: RuntimeDefault
   containers:

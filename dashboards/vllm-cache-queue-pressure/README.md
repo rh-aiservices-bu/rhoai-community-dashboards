@@ -103,8 +103,11 @@ Run in-cluster (recommended - no port-forward, no local TLS setup):
 Before applying, edit the Pod's `--base-url` arg and replace
 `<model-service>.<model-namespace>` with your model's in-cluster service
 (also update the same URL in the ConfigMap's embedded script banner, or just
-regenerate the ConfigMap - see below). The pod cleans itself up when the run
-finishes (`restartPolicy: Never`).
+regenerate the ConfigMap - see below). The pod stops when the run finishes
+(`restartPolicy: Never`), but the Pod object remains - delete it before
+re-applying for another run:
+
+    oc delete pod vllm-load-gen -n <model-namespace>
 
 Or from your laptop:
 
@@ -186,6 +189,14 @@ Caveats learned the hard way:
       oc patch podmonitor <engine-podmonitor> -n <model-namespace> --type=json -p \
         '[{"op":"replace","path":"/spec/podMetricsEndpoints/0/tlsConfig/insecureSkipVerify","value":true}]'
 
+  Security impact, stated plainly: this disables certificate validation. The
+  collector normally authenticates the engine by its certificate; with the
+  check off, anyone positioned to intercept scrape traffic can inject metric
+  data, because encrypted traffic alone does not authenticate the peer. That
+  is an acceptable trade for the simulator demo - the certs are self-signed
+  and the scraped data is synthetic - but restore `insecureSkipVerify: false`
+  after demoing, and never use it with a real engine or in production.
+
 - If the target allocator dropped the engine's scrape jobs entirely (symptom:
   `vllm:*` metrics vanish from the Thanos Querier after a pod restart; check
   `oc logs -n redhat-ods-monitoring \
@@ -218,6 +229,13 @@ subjects:
     name: data-science-collector-collector
     namespace: redhat-ods-monitoring
 ```
+
+The verbs are `get`, `list`, and `watch`, not `get` alone: the target
+allocator runs a list-and-watch informer over Secrets so it picks up secret
+rotation, and a `get`-only role stops that watcher from ever syncing
+(`failed to list secrets ... cannot list resource` in its logs, and the
+engine's scrape jobs never appear). The access is namespace-scoped - nothing
+cluster-wide.
 
 What moves with these knobs, and what does not: prefill/ITL/decode p90 and
 waiting requests rise and fall with load; the sim's percentile values are

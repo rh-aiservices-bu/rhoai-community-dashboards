@@ -29,8 +29,9 @@ Load pattern
 ------------
 Steady mode keeps `--concurrency` workers busy for `--duration` seconds.
 Burst mode (--burst-every N) fires a synchronized wave of one request per
-worker every N seconds on top of steady traffic - waves momentarily exceed the
-engine's batch capacity and push `num_requests_waiting` above zero.
+worker every N seconds on a shared clock - long requests from an earlier wave
+overlap into later ones, stacking queue pressure until `num_requests_waiting`
+climbs above zero.
 
 Prompts are `--prompt-words` words long (exercises prefill; KV cache usage
 rises with prompt + generation length) and each request generates up to
@@ -118,7 +119,7 @@ def stream_response(resp):
     return tokens
 
 
-def worker(args, parsed, model, prompt, end_at, barrier, burst_every):
+def worker(args, parsed, model, prompt, end_at, burst_every):
     body = json.dumps({
         "model": model,
         "prompt": prompt,
@@ -132,7 +133,6 @@ def worker(args, parsed, model, prompt, end_at, barrier, burst_every):
                "Authorization": "Bearer unused"}
     conn = make_connection(parsed, args.verify_tls)
     last_used = 0.0
-    wave = 0
     while not STOP.is_set() and time.time() < end_at:
         if args.ramp:
             # on/off cycles: full cycle = 2 * ramp, first half loads, second half idles
@@ -141,17 +141,12 @@ def worker(args, parsed, model, prompt, end_at, barrier, burst_every):
                 if STOP.wait(min(2 * args.ramp - cycle, end_at - time.time())):
                     break
                 continue
-        if burst_every and barrier:
-            # align to the next wave, then fire together
-            target = (wave + 1) * burst_every
-            delay = target - (time.time() - start_time())
+        if burst_every:
+            # align to the next wave boundary on the shared clock, then fire;
+            # a request that outlives a wave simply joins the next one
+            delay = burst_every - ((time.time() - start_time()) % burst_every)
             if delay > 0 and STOP.wait(min(delay, burst_every)):
                 break
-            try:
-                barrier.wait(timeout=5)
-            except threading.BrokenBarrierError:
-                pass
-            wave += 1
         if time.time() - last_used > 10:
             # server keep-alive closes idle connections: reconnect before sending
             try:
@@ -213,7 +208,6 @@ def main():
     model = args.model or detect_model(parsed, args.verify_tls)
     prompt = build_prompt(args.prompt_words)
     end_at = time.time() + args.duration
-    barrier = threading.Barrier(args.concurrency) if args.burst_every else None
 
     print(f"endpoint      : {parsed.geturl()}")
     print(f"model         : {model}")
@@ -223,7 +217,7 @@ def main():
     print("ctrl-c to stop early\n")
 
     threads = [threading.Thread(target=worker,
-                                args=(args, parsed, model, prompt, end_at, barrier, args.burst_every),
+                                args=(args, parsed, model, prompt, end_at, args.burst_every),
                                 daemon=True)
                for _ in range(args.concurrency)]
     _START = time.time()

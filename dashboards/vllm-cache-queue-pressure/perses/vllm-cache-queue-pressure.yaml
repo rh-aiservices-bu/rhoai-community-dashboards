@@ -1,7 +1,7 @@
 apiVersion: perses.dev/v1alpha2
 kind: PersesDashboard
 metadata:
-  name: dashboard-9-c-vllm-cache-queue-pressure-admin
+  name: dashboard-99-vllm-cache-queue-pressure-admin
   namespace: redhat-ods-monitoring
 spec:
   config:

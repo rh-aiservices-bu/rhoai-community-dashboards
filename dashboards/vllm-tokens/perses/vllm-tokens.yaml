@@ -1,7 +1,7 @@
 apiVersion: perses.dev/v1alpha2
 kind: PersesDashboard
 metadata:
-  name: dashboard-9-c-vllm-tokens
+  name: dashboard-99-c-vllm-tokens
   namespace: redhat-ods-monitoring
 spec:
   config:

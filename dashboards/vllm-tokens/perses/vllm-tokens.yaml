@@ -1,0 +1,64 @@
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  name: dashboard-9-c-vllm-tokens
+  namespace: redhat-ods-monitoring
+spec:
+  config:
+    display:
+      name: "[C] - vLLM Token Throughput"
+      description: "Output token rate per vLLM model."
+    duration: 1h
+    refreshInterval: 30s
+    variables:
+      - kind: ListVariable
+        spec:
+          name: model
+          display:
+            name: Model
+          allowAllValue: true
+          allowMultiple: true
+          customAllValue: ".*"
+          defaultValue: $__all
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              datasource:
+                kind: PrometheusDatasource
+                name: data-science-prometheus-datasource
+              labelName: model_name
+              matchers:
+                - vllm:generation_tokens_total
+    panels:
+      tokenRate:
+        kind: Panel
+        spec:
+          display:
+            name: "Output tokens per second"
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: sum by (model_name) (rate(vllm:generation_tokens_total{model_name=~"$model"}[5m]))
+    layouts:
+      - kind: Grid
+        spec:
+          display:
+            title: Throughput
+            collapse:
+              open: true
+          items:
+            - content:
+                $ref: "#/spec/panels/tokenRate"
+              x: 0
+              "y": 0
+              width: 12
+              height: 8

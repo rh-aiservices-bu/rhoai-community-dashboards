@@ -10,11 +10,12 @@ language: en-US
 
 # Applies to reviews and chat. Keeps the review on things that break rather
 # than things that could read better.
+# Hard limit: CodeRabbit rejects the WHOLE file if this exceeds 250 characters,
+# and silently falls back to defaults. Currently 218.
 tone_instructions: >-
-  Report only issues that would make a dashboard render wrong data, render no
-  data, or fail to apply. Skip prose, naming style, formatting and missing
-  documentation sections unless the omission makes the dashboard unusable on
-  another cluster. Prefer a few high confidence findings over many small ones.
+  Report only issues that make a dashboard show wrong data, show no data, or
+  fail to apply. Skip prose, style and missing doc sections unless they make it
+  unusable on another cluster. Prefer few high confidence findings.
 
 reviews:
   profile: quiet            # only the most important feedback

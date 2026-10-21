@@ -2,7 +2,7 @@
 
 A community-driven collection of custom dashboards as code for Red Hat OpenShift AI (RHOAI). This repository brings together contributions from field teams, customers, and the wider community to answer operational questions specific to their AI workloads and organizations.
 
-Contributions include Perses and Grafana dashboards or entries in the [dashboard register](https://github.com/rh-aiservices-bu/rhoai-dashboards-as-code/tree/main/dashboards#dashboard-register) - an index of dashboards that live off-repository.
+Contributions include Perses and Grafana dashboards or entries in the [dashboard register](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/tree/main/dashboards#dashboard-register) - an index of dashboards that live off-repository.
 
 **Full documentation:** https://rh-aiservices-bu.github.io/rhoai-community-dashboards/
 
@@ -50,7 +50,7 @@ Dashboard contributions can target either tool. Equivalent versions for both are
 
 ## Dashboard Register
 
-The [dashboard register](https://github.com/rh-aiservices-bu/rhoai-dashboards-as-code/tree/main/dashboards#dashboard-register) is an index of dashboards that live in their own repositories rather than in this tree. 
+The [dashboard register](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/tree/main/dashboards#dashboard-register) is an index of dashboards that live in their own repositories rather than in this tree. 
 
 Some dashboards ship as part of a larger application, where the dashboard and the exporter that feeds it are versioned together and would drift if copied here. This register points to those, so they can be found alongside the dashboards held directly in this repository.
 
@@ -67,7 +67,7 @@ Submit a pull request containing the dashboard files or application source code 
 
 Remove credentials, customer identifiers, internal endpoints, and sensitive data before contributing. Parameterize environment-specific values where possible.
 
-Full contribution guidelines can be found in our [Contribution Guide](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/contributing.html)
+Full contribution guidelines can be found in our [Contribution Guide](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/contributing.html)
 
 ## Support
 

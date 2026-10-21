@@ -1,0 +1,187 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vllm-load-gen-script
+  labels:
+    app: vllm-load-gen
+data:
+  note: Embedded copy of vllm-load-gen.py - regenerate this ConfigMap after editing
+    the script
+  gen.py: "#!/usr/bin/env python3\n\"\"\"Load generator for the [C] - vLLM Cache &\
+    \ Queue Pressure dashboard.\n\nSends streaming OpenAI-compatible completion requests\
+    \ to a vLLM (or llm-d\ninference-sim) endpoint so the dashboard panels have live\
+    \ data:\n\n    KV cache utilization %       <- vllm:kv_cache_usage_perc\n    Inter-token\
+    \ latency p90 (s)  <- vllm:inter_token_latency_seconds_bucket\n    Prefill vs\
+    \ decode p90 (s)    <- vllm:request_{prefill,decode}_time_seconds_bucket\n   \
+    \ Waiting requests             <- vllm:num_requests_waiting\n\nStdlib only. TLS\
+    \ endpoints with self-signed certificates (llm-d inference sim)\nare handled by\
+    \ default.\n\nUsage\n-----\n# 1. Reach the model from your laptop (or run the\
+    \ generator in-cluster - see\n#    vllm-load-gen-pod.yaml):\noc -n <model-namespace>\
+    \ port-forward svc/<model-service> 18000:8000\n\n# 2. Generate load:\npython3\
+    \ vllm-load-gen.py --base-url https://localhost:18000 --duration 300\npython3\
+    \ vllm-load-gen.py --base-url https://localhost:18000 --concurrency 16 --ramp\
+    \ 120\n\n# 3. Watch the dashboard in the RHOAI console (Observe -> Observability).\n\
+    #    The rate() panels need a scrape or two: give them ~1 minute.\n\nLoad pattern\n\
+    ------------\nSteady mode keeps `--concurrency` workers busy for `--duration`\
+    \ seconds.\nBurst mode (--burst-every N) fires a synchronized wave of one request\
+    \ per\nworker every N seconds on a shared clock - long requests from an earlier\
+    \ wave\noverlap into later ones, stacking queue pressure until `num_requests_waiting`\n\
+    climbs above zero.\n\nPrompts are `--prompt-words` words long (exercises prefill;\
+    \ KV cache usage\nrises with prompt + generation length) and each request generates\
+    \ up to\n`--max-tokens` streamed tokens.\n\"\"\"\n\nimport argparse\nimport http.client\n\
+    import json\nimport ssl\nimport sys\nimport threading\nimport time\nfrom urllib.parse\
+    \ import urlparse\n\nSTOP = threading.Event()\nSTATS = {\"ok\": 0, \"err\": 0,\
+    \ \"tokens\": 0, \"e2e\": []}\nSTATS_LOCK = threading.Lock()\n\n\ndef parse_args():\n\
+    \    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])\n    p.add_argument(\"\
+    --base-url\", default=\"https://localhost:8000\",\n                   help=\"\
+    scheme://host:port of the model endpoint (default %(default)s)\")\n    p.add_argument(\"\
+    --model\", default=None,\n                   help=\"model name; defaults to the\
+    \ first one the server reports\")\n    p.add_argument(\"--concurrency\", type=int,\
+    \ default=8,\n                   help=\"number of concurrent workers (default\
+    \ %(default)s)\")\n    p.add_argument(\"--duration\", type=int, default=120,\n\
+    \                   help=\"seconds of load (default %(default)s)\")\n    p.add_argument(\"\
+    --max-tokens\", type=int, default=150,\n                   help=\"generation length\
+    \ per request (default %(default)s)\")\n    p.add_argument(\"--prompt-words\"\
+    , type=int, default=200,\n                   help=\"prompt length in words, exercises\
+    \ prefill (default %(default)s)\")\n    p.add_argument(\"--burst-every\", type=int,\
+    \ default=0,\n                   help=\"synchronized request wave every N seconds;\
+    \ 0 disables (default %(default)s)\")\n    p.add_argument(\"--ramp\", type=int,\
+    \ default=0,\n                   help=\"seconds of load per on/off cycle, e.g.\
+    \ --ramp 120 alternates 120s of load with 120s idle - \"\n                   \
+    \     \"makes the rate() panels rise and fall over time (default 0 = steady)\"\
+    )\n    p.add_argument(\"--verify-tls\", action=\"store_true\",\n             \
+    \      help=\"verify TLS certificates (default: skip, for self-signed sim certs)\"\
+    )\n    return p.parse_args()\n\n\ndef make_connection(parsed, verify_tls):\n \
+    \   \"\"\"One connection per worker; HTTP for plain, HTTPS (optionally unverified)\
+    \ for TLS.\"\"\"\n    if parsed.scheme == \"https\":\n        ctx = ssl.create_default_context()\n\
+    \        if not verify_tls:\n            ctx.check_hostname = False\n        \
+    \    ctx.verify_mode = ssl.CERT_NONE\n        return http.client.HTTPSConnection(parsed.hostname,\
+    \ parsed.port, context=ctx, timeout=120)\n    return http.client.HTTPConnection(parsed.hostname,\
+    \ parsed.port, timeout=120)\n\n\ndef detect_model(parsed, verify_tls):\n    conn\
+    \ = make_connection(parsed, verify_tls)\n    try:\n        conn.request(\"GET\"\
+    , \"/v1/models\")\n        resp = conn.getresponse()\n        data = json.loads(resp.read())\n\
+    \        return data[\"data\"][0][\"id\"]\n    except Exception as exc:\n    \
+    \    sys.exit(f\"could not list models at {parsed.geturl()}: {exc}\")\n    finally:\n\
+    \        conn.close()\n\n\ndef build_prompt(n_words):\n    words = [\"alpha\"\
+    , \"beta\", \"gamma\", \"delta\", \"observability\", \"throughput\",\n       \
+    \      \"latency\", \"cache\", \"serving\", \"model\"]\n    return \" \".join(words[i\
+    \ % len(words)] for i in range(n_words))\n\n\ndef stream_response(resp):\n   \
+    \ \"\"\"Read an SSE body, counting generated tokens; returns nothing on non-SSE\
+    \ bodies.\"\"\"\n    tokens = 0\n    for raw in resp:\n        line = raw.decode(\"\
+    utf-8\", \"replace\").strip()\n        if line.startswith(\"data:\"):\n      \
+    \      payload = line[5:].strip()\n            if payload == \"[DONE]\":\n   \
+    \             break\n            tokens += 1\n    return tokens\n\n\ndef worker(args,\
+    \ parsed, model, prompt, end_at, burst_every):\n    body = json.dumps({\n    \
+    \    \"model\": model,\n        \"prompt\": prompt,\n        \"max_tokens\": args.max_tokens,\n\
+    \        \"temperature\": 0.7,\n        \"stream\": True,\n    }).encode()\n \
+    \   headers = {\"Content-Type\": \"application/json\",\n               # some\
+    \ proxies require an Authorization header; the endpoint\n               # does\
+    \ not validate it - \"unused\" is a literal placeholder\n               \"Authorization\"\
+    : \"Bearer unused\"}\n    conn = make_connection(parsed, args.verify_tls)\n  \
+    \  last_used = 0.0\n    while not STOP.is_set() and time.time() < end_at:\n  \
+    \      if args.ramp:\n            # on/off cycles: full cycle = 2 * ramp, first\
+    \ half loads, second half idles\n            cycle = (time.time() - start_time())\
+    \ % (2 * args.ramp)\n            if cycle >= args.ramp:\n                if STOP.wait(min(2\
+    \ * args.ramp - cycle, end_at - time.time())):\n                    break\n  \
+    \              continue\n        if burst_every:\n            # align to the next\
+    \ wave boundary on the shared clock, then fire;\n            # a request that\
+    \ outlives a wave simply joins the next one\n            delay = burst_every -\
+    \ ((time.time() - start_time()) % burst_every)\n            if delay > 0 and STOP.wait(min(delay,\
+    \ burst_every)):\n                break\n        if time.time() - last_used >\
+    \ 10:\n            # server keep-alive closes idle connections: reconnect before\
+    \ sending\n            try:\n                conn.close()\n            except\
+    \ Exception:\n                pass\n            conn = make_connection(parsed,\
+    \ args.verify_tls)\n        attempt = 0\n        while True:\n            t0 =\
+    \ time.time()\n            try:\n                conn.request(\"POST\", \"/v1/completions\"\
+    , body=body, headers=headers)\n                resp = conn.getresponse()\n   \
+    \             if resp.status != 200:\n                    raise IOError(f\"HTTP\
+    \ {resp.status}\")\n                tokens = stream_response(resp)\n         \
+    \       with STATS_LOCK:\n                    STATS[\"ok\"] += 1\n           \
+    \         STATS[\"tokens\"] += tokens\n                    STATS[\"e2e\"].append(time.time()\
+    \ - t0)\n                if resp.will_close:\n                    conn.close()\n\
+    \                    conn = make_connection(parsed, args.verify_tls)\n       \
+    \             last_used = time.time()\n                break\n            except\
+    \ Exception:\n                attempt += 1\n                try:\n           \
+    \         conn.close()\n                except Exception:\n                  \
+    \  pass\n                conn = make_connection(parsed, args.verify_tls)\n   \
+    \             if attempt >= 2:\n                    with STATS_LOCK:\n       \
+    \                 STATS[\"err\"] += 1\n                    STOP.wait(1)\n    \
+    \                break\n        last_used = time.time()\n    try:\n        conn.close()\n\
+    \    except Exception:\n        pass\n\n\n_START = time.time()\n\n\ndef start_time():\n\
+    \    return _START\n\n\ndef main():\n    global _START\n    args = parse_args()\n\
+    \    parsed = urlparse(args.base_url)\n    if not parsed.hostname:\n        sys.exit(f\"\
+    --base-url must look like scheme://host:port, got: {args.base_url}\")\n\n    model\
+    \ = args.model or detect_model(parsed, args.verify_tls)\n    prompt = build_prompt(args.prompt_words)\n\
+    \    end_at = time.time() + args.duration\n\n    print(f\"endpoint      : {parsed.geturl()}\"\
+    )\n    print(f\"model         : {model}\")\n    print(f\"pattern       : concurrency={args.concurrency}\
+    \ duration={args.duration}s \"\n          f\"max_tokens={args.max_tokens} prompt_words={args.prompt_words}\
+    \ \"\n          f\"burst_every={args.burst_every or 0}s\")\n    print(\"ctrl-c\
+    \ to stop early\\n\")\n\n    threads = [threading.Thread(target=worker,\n    \
+    \                            args=(args, parsed, model, prompt, end_at, args.burst_every),\n\
+    \                                daemon=True)\n               for _ in range(args.concurrency)]\n\
+    \    _START = time.time()\n    for t in threads:\n        t.start()\n\n    try:\n\
+    \        next_report = time.time() + 15\n        while any(t.is_alive() for t\
+    \ in threads):\n            if STOP.wait(0.5):\n                break\n      \
+    \      now = time.time()\n            if now >= next_report:\n               \
+    \ with STATS_LOCK:\n                    print(f\"  {int(_START and now - _START):4}s\
+    \  ok={STATS['ok']:5}  \"\n                          f\"err={STATS['err']:3} \
+    \ tokens={STATS['tokens']}\")\n                next_report = now + 15\n    except\
+    \ KeyboardInterrupt:\n        print(\"\\nstopping early...\")\n        STOP.set()\n\
+    \n    for t in threads:\n        t.join(timeout=30)\n\n    e2e = sorted(STATS[\"\
+    e2e\"])\n    if e2e:\n        p50 = e2e[len(e2e) // 2]\n        p90 = e2e[int(len(e2e)\
+    \ * 0.9)]\n    else:\n        p50 = p90 = 0.0\n    print(f\"\\ndone: ok={STATS['ok']}\
+    \  err={STATS['err']}  tokens={STATS['tokens']}  \"\n          f\"e2e p50={p50:.2f}s\
+    \  p90={p90:.2f}s\")\n    print(\"give Prometheus a scrape (~30s), then check\
+    \ the dashboard panels.\")\n\n\nif __name__ == \"__main__\":\n    main()\n"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vllm-load-gen
+  labels:
+    app: vllm-load-gen
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: gen
+    image: registry.redhat.io/ubi9/python-311
+    command:
+    - python3
+    - -u
+    - /gen/gen.py
+    args:
+    - --base-url
+    - https://<model-service>.<model-namespace>.svc.cluster.local:8000
+    - --duration
+    - '240'
+    - --concurrency
+    - '16'
+    - --ramp
+    - '30'
+    env:
+    - name: PYTHONDONTWRITEBYTECODE
+      value: '1'
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 128Mi
+    volumeMounts:
+    - name: script
+      mountPath: /gen
+      readOnly: true
+  volumes:
+  - name: script
+    configMap:
+      name: vllm-load-gen-script

@@ -1,0 +1,296 @@
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  name: dashboard-99-vllm-cache-queue-pressure-admin
+  namespace: redhat-ods-monitoring
+spec:
+  config:
+    display:
+      name: "[C] - vLLM Cache & Queue Pressure"
+      description: "Engine-side causes of latency degradation: KV cache saturation, prefix-cache effectiveness, preemptions, and queue depth, per vLLM model."
+    duration: 1h
+    refreshInterval: 30s
+    variables:
+      - kind: ListVariable
+        spec:
+          name: model
+          display:
+            name: Model
+          allowAllValue: true
+          allowMultiple: false
+          defaultValue: $__all
+          customAllValue: ".*"
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              datasource:
+                kind: PrometheusDatasource
+                name: data-science-prometheus-datasource
+              labelName: model_name
+              matchers:
+                - vllm:num_requests_running
+    panels:
+      tokenThroughput:
+        kind: Panel
+        spec:
+          display:
+            name: "Token throughput (tokens/s)"
+            description: "Generated tokens per second across all replicas. Rises and falls with demand - the traffic dimension that drives cache pressure."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+                values:
+                  - last
+                  - max
+                  - mean
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: sum by (model_name) (rate(vllm:generation_tokens_total{model_name=~"$model"}[$__rate_interval]))
+      kvCacheUtilization:
+        kind: Panel
+        spec:
+          display:
+            name: "KV cache utilization %"
+            description: "Fraction of GPU KV cache blocks in use, worst replica per model. Sustained values near 100% mean the engine is out of cache: new requests queue and running ones can be preempted."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+                values:
+                  - last
+                  - max
+                  - mean
+              thresholds:
+                steps:
+                  - value: 0
+                    color: green
+                  - value: 80
+                    color: orange
+                  - value: 95
+                    color: red
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: 100 * max by (model_name) (vllm:kv_cache_usage_perc{model_name=~"$model"})
+      interTokenLatency:
+        kind: Panel
+        spec:
+          display:
+            name: "Inter-token latency p90 (s)"
+            description: "Time between consecutive streamed output tokens, p90 per model. Spikes indicate the engine is struggling: cache thrash, preemption recompute, or GPU contention, even when the built-in dashboards show nothing wrong."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+                values:
+                  - last
+                  - max
+                  - mean
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: histogram_quantile(0.90, sum by (le, model_name) (rate(vllm:inter_token_latency_seconds_bucket{model_name=~"$model"}[$__rate_interval])))
+      prefillDecodeTime:
+        kind: Panel
+        spec:
+          display:
+            name: "Prefill vs decode time p90 (s)"
+            description: "Where engine time goes: time spent in the PREFILL vs DECODE phase per request, p90. Rising prefill suggests longer prompts or a cold cache; rising decode suggests long generations or memory pressure."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+                values:
+                  - last
+                  - max
+                  - mean
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: histogram_quantile(0.90, sum by (le, model_name) (rate(vllm:request_prefill_time_seconds_bucket{model_name=~"$model"}[$__rate_interval])))
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: histogram_quantile(0.90, sum by (le, model_name) (rate(vllm:request_decode_time_seconds_bucket{model_name=~"$model"}[$__rate_interval])))
+      waitingRequests:
+        kind: Panel
+        spec:
+          display:
+            name: "Waiting requests"
+            description: "Requests queued and not yet running. Read it next to KV cache utilization: rising waiting with flat traffic means cache pressure, not demand growth."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+                values:
+                  - last
+                  - max
+                  - mean
+              thresholds:
+                steps:
+                  - value: 0
+                    color: green
+                  - value: 1
+                    color: red
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: sum by (model_name) (vllm:num_requests_waiting{model_name=~"$model"})
+      kvCacheGauge:
+        kind: Panel
+        spec:
+          display:
+            name: "KV cache utilization %"
+            description: "Current fraction of GPU KV cache blocks in use, worst replica per model. The gauge color tracks the thresholds: green below 80%, amber 80-95%, red at 95% or above."
+          plugin:
+            kind: GaugeChart
+            spec:
+              calculation: last-number
+              thresholds:
+                steps:
+                  - value: 0
+                    color: green
+                  - value: 0.8
+                    color: orange
+                  - value: 0.95
+                    color: red
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: max by (model_name) (vllm:kv_cache_usage_perc{model_name=~"$model"})
+      waitingRequestsGauge:
+        kind: Panel
+        spec:
+          display:
+            name: "Waiting requests"
+            description: "Requests queued and not yet running, summed per model. The gauge renders the count on a percent-style scale: 21 waiting shows as 21%. Any nonzero value turns the gauge red: the engine is queueing, typically because the KV cache is full."
+          plugin:
+            kind: GaugeChart
+            spec:
+              calculation: last-number
+              thresholds:
+                steps:
+                  - value: 0
+                    color: green
+                  - value: 0.01
+                    color: red
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: sum by (model_name) (vllm:num_requests_waiting{model_name=~"$model"}) / 100
+    layouts:
+      - kind: Grid
+        spec:
+          display:
+            title: Current state
+            collapse:
+              open: true
+          items:
+            - content:
+                $ref: "#/spec/panels/kvCacheGauge"
+              x: 0
+              "y": 0
+              width: 12
+              height: 7
+            - content:
+                $ref: "#/spec/panels/waitingRequestsGauge"
+              x: 12
+              "y": 0
+              width: 12
+              height: 7
+      - kind: Grid
+        spec:
+          display:
+            title: Trends
+            collapse:
+              open: true
+          items:
+            - content:
+                $ref: "#/spec/panels/tokenThroughput"
+              x: 0
+              "y": 0
+              width: 24
+              height: 6
+            - content:
+                $ref: "#/spec/panels/kvCacheUtilization"
+              x: 0
+              "y": 6
+              width: 12
+              height: 7
+            - content:
+                $ref: "#/spec/panels/interTokenLatency"
+              x: 12
+              "y": 6
+              width: 12
+              height: 7
+            - content:
+                $ref: "#/spec/panels/prefillDecodeTime"
+              x: 0
+              "y": 13
+              width: 12
+              height: 7
+            - content:
+                $ref: "#/spec/panels/waitingRequests"
+              x: 12
+              "y": 13
+              width: 12
+              height: 7

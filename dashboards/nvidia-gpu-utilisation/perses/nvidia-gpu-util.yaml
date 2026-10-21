@@ -1,0 +1,1575 @@
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  name: dashboard-99-nvidia-gpu-utilisation
+  namespace: redhat-ods-monitoring
+  labels:
+    platform.opendatahub.io/part-of: dashboard
+spec:
+  config:
+    display:
+      name: "[C] - NVIDIA GPU Utilisation"
+    duration: 2d
+    variables:
+    - kind: ListVariable
+      spec:
+        allowAllValue: true
+        allowMultiple: false
+        name: model_name
+        display:
+          name: Model
+        plugin:
+          kind: PrometheusLabelValuesVariable
+          spec:
+            datasource:
+              kind: PrometheusDatasource
+              name: cluster-prometheus-datasource
+            labelName: model_name
+            matchers:
+            - vllm:num_requests_running
+    - kind: ListVariable
+      spec:
+        allowAllValue: true
+        allowMultiple: false
+        name: gpu_node
+        display:
+          name: Node
+        plugin:
+          kind: PrometheusPromQLVariable
+          spec:
+            datasource:
+              kind: PrometheusDatasource
+              name: cluster-prometheus-datasource
+            expr: 'DCGM_FI_DEV_FB_USED and on(exported_pod) label_replace((count by (pod)(vllm:cache_config_info{model_name=~"$model_name"}) or group by (pod)(vllm:num_requests_running{model_name=~"$model_name"})), "exported_pod", "$1", "pod", "(.*)")'
+            labelName: hostname
+    - kind: ListVariable
+      spec:
+        allowAllValue: true
+        allowMultiple: false
+        name: gpu_index
+        display:
+          name: GPU
+        plugin:
+          kind: PrometheusLabelValuesVariable
+          spec:
+            datasource:
+              kind: PrometheusDatasource
+              name: cluster-prometheus-datasource
+            labelName: gpu
+            matchers:
+            - 'DCGM_FI_DEV_FB_USED{hostname=~"$gpu_node"}'
+    layouts:
+    - kind: Grid
+      spec:
+        display:
+          collapse:
+            open: true
+          title: Cluster Overview
+        items:
+        - content:
+            $ref: '#/spec/panels/clusterVramUsed'
+          height: 6
+          width: 5
+          x: 0
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/clusterVramFree'
+          height: 6
+          width: 5
+          x: 5
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/clusterVramUtil'
+          height: 6
+          width: 6
+          x: 10
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/gpuActiveCount'
+          height: 6
+          width: 4
+          x: 16
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/gpuTotalCount'
+          height: 6
+          width: 4
+          x: 20
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/activeGpusPerNode'
+          height: 8
+          width: 8
+          x: 0
+          "y": 6
+        - content:
+            $ref: '#/spec/panels/vramPerGpu'
+          height: 8
+          width: 16
+          x: 8
+          "y": 6
+        - content:
+            $ref: '#/spec/panels/gpuEngineActiveByNode'
+          height: 8
+          width: 24
+          x: 0
+          "y": 14
+    - kind: Grid
+      spec:
+        display:
+          collapse:
+            open: false
+          title: Per-Model Breakdown
+        items:
+        - content:
+            $ref: '#/spec/panels/selectedModel'
+          height: 8
+          width: 6
+          x: 0
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/gpusServingModel'
+          height: 8
+          width: 18
+          x: 6
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/gpuEngineVsRequests'
+          height: 8
+          width: 16
+          x: 0
+          "y": 8
+        - content:
+            $ref: '#/spec/panels/meanGpuEngineActive'
+          height: 4
+          width: 8
+          x: 16
+          "y": 8
+        - content:
+            $ref: '#/spec/panels/totalRequestsModel'
+          height: 4
+          width: 8
+          x: 16
+          "y": 12
+        - content:
+            $ref: '#/spec/panels/tensorCoreVsTokens'
+          height: 8
+          width: 12
+          x: 0
+          "y": 16
+        - content:
+            $ref: '#/spec/panels/dramBandwidthVsKv'
+          height: 8
+          width: 12
+          x: 12
+          "y": 16
+    - kind: Grid
+      spec:
+        display:
+          collapse:
+            open: false
+          title: Other / Unattributed GPUs
+        items:
+        - content:
+            $ref: '#/spec/panels/unattributedGpus'
+          height: 8
+          width: 24
+          x: 0
+          "y": 0
+    - kind: Grid
+      spec:
+        display:
+          collapse:
+            open: false
+          title: Per-GPU Breakdown
+        items:
+        - content:
+            $ref: '#/spec/panels/selectedGpu'
+          height: 4
+          width: 6
+          x: 0
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/vramUsedPerGpu'
+          height: 4
+          width: 6
+          x: 6
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/vramTotalPerGpu'
+          height: 4
+          width: 6
+          x: 12
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/vramUtilPerGpu'
+          height: 4
+          width: 6
+          x: 18
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/podAssignment'
+          height: 6
+          width: 24
+          x: 0
+          "y": 4
+        - content:
+            $ref: '#/spec/panels/gpuEngineActive'
+          height: 8
+          width: 8
+          x: 0
+          "y": 10
+        - content:
+            $ref: '#/spec/panels/tensorCoreActive'
+          height: 8
+          width: 8
+          x: 8
+          "y": 10
+        - content:
+            $ref: '#/spec/panels/dramBandwidth'
+          height: 8
+          width: 8
+          x: 16
+          "y": 10
+        - content:
+            $ref: '#/spec/panels/nvlinkBandwidth'
+          height: 8
+          width: 24
+          x: 0
+          "y": 18
+    - kind: Grid
+      spec:
+        display:
+          collapse:
+            open: false
+          title: Stats for Nerds
+        items:
+        - content:
+            $ref: '#/spec/panels/clusterPowerDraw'
+          height: 4
+          width: 12
+          x: 0
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/avgGpuTemp'
+          height: 4
+          width: 12
+          x: 12
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/powerDrawPerGpu'
+          height: 6
+          width: 12
+          x: 0
+          "y": 4
+        - content:
+            $ref: '#/spec/panels/gpuTempPerGpu'
+          height: 6
+          width: 12
+          x: 12
+          "y": 4
+        - content:
+            $ref: '#/spec/panels/xidErrors'
+          height: 8
+          width: 8
+          x: 0
+          "y": 10
+        - content:
+            $ref: '#/spec/panels/pcieReplay'
+          height: 8
+          width: 8
+          x: 8
+          "y": 10
+        - content:
+            $ref: '#/spec/panels/memoryTemp'
+          height: 8
+          width: 8
+          x: 16
+          "y": 10
+    panels:
+      clusterVramUsed:
+        kind: Panel
+        spec:
+          display:
+            name: Cluster VRAM Used
+            description: "Total GPU VRAM currently in use across all nodes, alongside total cluster VRAM capacity."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: bytes
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(DCGM_FI_DEV_FB_USED) * 1048576'
+                  seriesNameFormat: VRAM Used
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 1048576'
+                  seriesNameFormat: Total
+      clusterVramFree:
+        kind: Panel
+        spec:
+          display:
+            name: Cluster VRAM Free
+            description: "Total GPU VRAM free across all nodes (headroom for new deployments), alongside total cluster VRAM capacity."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: bytes
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(DCGM_FI_DEV_FB_FREE) * 1048576'
+                  seriesNameFormat: VRAM Free
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 1048576'
+                  seriesNameFormat: Total
+      clusterVramUtil:
+        kind: Panel
+        spec:
+          display:
+            name: Cluster VRAM Utilisation
+            description: "Percentage of total cluster VRAM in use. High values indicate healthy utilisation; low values indicate most GPUs are idle."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: percent-decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(DCGM_FI_DEV_FB_USED) / sum(DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE)'
+                  seriesNameFormat: VRAM Utilisation
+      gpuActiveCount:
+        kind: Panel
+        spec:
+          display:
+            name: "Active GPUs"
+            description: "GPUs with VRAM usage exceeding 1 GiB — considered active."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'count(DCGM_FI_DEV_FB_USED > 1024)'
+                  seriesNameFormat: Active
+      gpuTotalCount:
+        kind: Panel
+        spec:
+          display:
+            name: "Total GPUs"
+            description: "Total GPU devices visible to DCGM on the cluster."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'count(group by (UUID) (DCGM_FI_DEV_FB_USED))'
+                  seriesNameFormat: Total
+      activeGpusPerNode:
+        kind: Panel
+        spec:
+          display:
+            name: Active GPUs per Node
+            description: "Active GPU count per node vs total GPUs on that node. Active % colours: green = all active, yellow = partial, red = none."
+          plugin:
+            kind: Table
+            spec:
+              density: standard
+              transforms:
+              - kind: MergeIndexedColumns
+                spec:
+                  column: node
+              - kind: JoinByColumnValue
+                spec:
+                  columns:
+                  - node
+              columnSettings:
+              - name: timestamp
+                hide: true
+              - name: "timestamp #1"
+                hide: true
+              - name: "timestamp #2"
+                hide: true
+              - name: "timestamp #3"
+                hide: true
+              - name: node
+                header: Node
+                enableSorting: true
+              - name: "value #1"
+                header: Active GPUs
+                format:
+                  unit: decimal
+                  decimalPlaces: 0
+                enableSorting: true
+                sort: desc
+              - name: "value #2"
+                header: Max GPUs
+                format:
+                  unit: decimal
+                  decimalPlaces: 0
+                enableSorting: true
+              - name: "value #3"
+                header: "Active %"
+                format:
+                  unit: decimal
+                  decimalPlaces: 0
+                enableSorting: true
+                cellSettings:
+                - condition:
+                    kind: Value
+                    spec:
+                      value: "100"
+                  textColor: "#43a047"
+                - condition:
+                    kind: Value
+                    spec:
+                      value: "0"
+                  textColor: "#d32f2f"
+                - condition:
+                    kind: Range
+                    spec:
+                      min: 1
+                      max: 99
+                  textColor: "#f57f17"
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: '(count by (node) (label_replace(DCGM_FI_DEV_FB_USED > 0, "node", "$1", "hostname", "^([^.]+).*"))) or (count by (node) (label_replace(DCGM_FI_DEV_FB_USED, "node", "$1", "hostname", "^([^.]+).*")) * 0)'
+                  seriesNameFormat: '{{node}}'
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'count by (node) (label_replace(group by (UUID, hostname) (DCGM_FI_DEV_FB_USED), "node", "$1", "hostname", "^([^.]+).*"))'
+                  seriesNameFormat: '{{node}}'
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: '((count by (node) (label_replace(DCGM_FI_DEV_FB_USED > 0, "node", "$1", "hostname", "^([^.]+).*"))) or (count by (node) (label_replace(DCGM_FI_DEV_FB_USED, "node", "$1", "hostname", "^([^.]+).*")) * 0)) / count by (node) (label_replace(group by (UUID, hostname) (DCGM_FI_DEV_FB_USED), "node", "$1", "hostname", "^([^.]+).*")) * 100'
+                  seriesNameFormat: '{{node}}'
+      vramPerGpu:
+        kind: Panel
+        spec:
+          display:
+            name: VRAM Used per GPU
+            description: "Current VRAM usage per GPU. Used % colours: green ≥90%, yellow 1–89%, red = 0%."
+          plugin:
+            kind: Table
+            spec:
+              density: standard
+              transforms:
+              - kind: MergeIndexedColumns
+                spec:
+                  column: node
+              - kind: MergeIndexedColumns
+                spec:
+                  column: gpu
+              - kind: MergeIndexedColumns
+                spec:
+                  column: modelName
+              - kind: JoinByColumnValue
+                spec:
+                  columns:
+                  - node
+                  - gpu
+              columnSettings:
+              - name: hostname
+                hide: true
+              - name: "hostname #1"
+                hide: true
+              - name: "hostname #2"
+                hide: true
+              - name: "hostname #3"
+                hide: true
+              - name: timestamp
+                hide: true
+              - name: "timestamp #1"
+                hide: true
+              - name: "timestamp #2"
+                hide: true
+              - name: "timestamp #3"
+                hide: true
+              - name: "modelName #1"
+                hide: true
+              - name: "modelName #2"
+                hide: true
+              - name: "modelName #3"
+                hide: true
+              - name: node
+                header: Node
+                enableSorting: true
+                sort: asc
+              - name: gpu
+                header: GPU
+                enableSorting: true
+              - name: "value #1"
+                header: VRAM Used
+                format:
+                  unit: bytes
+                enableSorting: true
+              - name: "value #2"
+                header: VRAM Total
+                format:
+                  unit: bytes
+                enableSorting: true
+              - name: "value #3"
+                header: "Used %"
+                format:
+                  unit: decimal
+                  decimalPlaces: 1
+                  shortValues: false
+                enableSorting: true
+                cellSettings:
+                - condition:
+                    kind: Value
+                    spec:
+                      value: "0"
+                  textColor: "#d32f2f"
+                - condition:
+                    kind: Range
+                    spec:
+                      min: 1
+                      max: 89
+                  textColor: "#f57f17"
+                - condition:
+                    kind: Range
+                    spec:
+                      min: 90
+                  textColor: "#43a047"
+              - name: modelName
+                header: GPU Model
+                enableSorting: true
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(sum by (gpu, hostname, modelName) (DCGM_FI_DEV_FB_USED * 1048576), "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(sum by (gpu, hostname, modelName) ((DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 1048576), "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'round(label_replace(sum by (gpu, hostname, modelName) (DCGM_FI_DEV_FB_USED) / sum by (gpu, hostname, modelName) (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100, "node", "$1", "hostname", "^([^.]+).*"), 0.1)'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+      gpuEngineActiveByNode:
+        kind: Panel
+        spec:
+          display:
+            name: "GPU Engine Active — avg per node"
+            description: "Average GPU compute engine activity per node. Near-zero when idle; rises during token generation. For per-GPU detail, see the Per-GPU Breakdown section."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.15
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              yAxis:
+                format:
+                  unit: percent-decimal
+                max: 1
+                min: 0
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(avg by (hostname) (DCGM_FI_PROF_GR_ENGINE_ACTIVE), "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}}'
+      selectedModel:
+        kind: Panel
+        spec:
+          display:
+            name: Selected Model
+          plugin:
+            kind: Markdown
+            spec:
+              text: "# $model_name"
+      gpusServingModel:
+        kind: Panel
+        spec:
+          display:
+            name: GPUs Serving This Model
+            description: "GPUs attributed to the selected model via pod-to-GPU matching. Used % colours: green ≥90%, yellow 1–89%, red = 0%."
+          plugin:
+            kind: Table
+            spec:
+              density: standard
+              transforms:
+              - kind: MergeIndexedColumns
+                spec:
+                  column: node
+              - kind: MergeIndexedColumns
+                spec:
+                  column: gpu
+              - kind: MergeIndexedColumns
+                spec:
+                  column: exported_pod
+              - kind: JoinByColumnValue
+                spec:
+                  columns:
+                  - node
+                  - gpu
+              columnSettings:
+              - name: hostname
+                hide: true
+              - name: "hostname #1"
+                hide: true
+              - name: "hostname #2"
+                hide: true
+              - name: "hostname #3"
+                hide: true
+              - name: timestamp
+                hide: true
+              - name: "timestamp #1"
+                hide: true
+              - name: "timestamp #2"
+                hide: true
+              - name: "timestamp #3"
+                hide: true
+              - name: node
+                header: Node
+                enableSorting: true
+                sort: asc
+              - name: gpu
+                header: GPU
+                enableSorting: true
+              - name: exported_pod
+                header: Pod
+                enableSorting: true
+              - name: "value #1"
+                header: VRAM Used
+                format:
+                  unit: bytes
+                enableSorting: true
+              - name: "value #2"
+                header: VRAM Total
+                format:
+                  unit: bytes
+                enableSorting: true
+              - name: "value #3"
+                header: "Used %"
+                format:
+                  unit: decimal
+                  decimalPlaces: 1
+                enableSorting: true
+                cellSettings:
+                - condition:
+                    kind: Value
+                    spec:
+                      value: "0"
+                  textColor: "#d32f2f"
+                - condition:
+                    kind: Range
+                    spec:
+                      min: 1
+                      max: 89
+                  textColor: "#f57f17"
+                - condition:
+                    kind: Range
+                    spec:
+                      min: 90
+                  textColor: "#43a047"
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(sum by (hostname, gpu, exported_pod) (DCGM_FI_DEV_FB_USED and on(exported_pod) label_replace((count by (pod)(vllm:cache_config_info{model_name=~"$model_name"}) OR group by (pod)(vllm:num_requests_running{model_name=~"$model_name"})), "exported_pod", "$1", "pod", "(.*)")) * 1048576, "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(sum by (hostname, gpu, exported_pod) ((DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) and on(exported_pod) label_replace((count by (pod)(vllm:cache_config_info{model_name=~"$model_name"}) OR group by (pod)(vllm:num_requests_running{model_name=~"$model_name"})), "exported_pod", "$1", "pod", "(.*)")) * 1048576, "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'round(label_replace(sum by (hostname, gpu, exported_pod) (DCGM_FI_DEV_FB_USED and on(exported_pod) label_replace((count by (pod)(vllm:cache_config_info{model_name=~"$model_name"}) OR group by (pod)(vllm:num_requests_running{model_name=~"$model_name"})), "exported_pod", "$1", "pod", "(.*)")) / sum by (hostname, gpu, exported_pod) ((DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) and on(exported_pod) label_replace((count by (pod)(vllm:cache_config_info{model_name=~"$model_name"}) OR group by (pod)(vllm:num_requests_running{model_name=~"$model_name"})), "exported_pod", "$1", "pod", "(.*)")) * 100, "node", "$1", "hostname", "^([^.]+).*"), 0.1)'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+      unattributedGpus:
+        kind: Panel
+        spec:
+          display:
+            name: GPUs Not Serving Any vLLM Model
+            description: "GPUs where no vLLM pod is currently running. These may be idle, used by non-vLLM workloads, or pending assignment. Used % colours: green ≥90%, yellow 1–89%, red = 0%."
+          plugin:
+            kind: Table
+            spec:
+              density: standard
+              transforms:
+              - kind: MergeIndexedColumns
+                spec:
+                  column: node
+              - kind: MergeIndexedColumns
+                spec:
+                  column: gpu
+              - kind: MergeIndexedColumns
+                spec:
+                  column: exported_pod
+              - kind: JoinByColumnValue
+                spec:
+                  columns:
+                  - node
+                  - gpu
+              columnSettings:
+              - name: hostname
+                hide: true
+              - name: "hostname #1"
+                hide: true
+              - name: "hostname #2"
+                hide: true
+              - name: "hostname #3"
+                hide: true
+              - name: timestamp
+                hide: true
+              - name: "timestamp #1"
+                hide: true
+              - name: "timestamp #2"
+                hide: true
+              - name: "timestamp #3"
+                hide: true
+              - name: node
+                header: Node
+                enableSorting: true
+                sort: asc
+              - name: gpu
+                header: GPU
+                enableSorting: true
+              - name: exported_pod
+                header: Pod
+                enableSorting: true
+              - name: "value #1"
+                header: VRAM Used
+                format:
+                  unit: bytes
+                enableSorting: true
+              - name: "value #2"
+                header: VRAM Total
+                format:
+                  unit: bytes
+                enableSorting: true
+              - name: "value #3"
+                header: "Used %"
+                format:
+                  unit: decimal
+                  decimalPlaces: 1
+                enableSorting: true
+                cellSettings:
+                - condition:
+                    kind: Value
+                    spec:
+                      value: "0"
+                  textColor: "#d32f2f"
+                - condition:
+                    kind: Range
+                    spec:
+                      min: 1
+                      max: 89
+                  textColor: "#f57f17"
+                - condition:
+                    kind: Range
+                    spec:
+                      min: 90
+                  textColor: "#43a047"
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(sum by (hostname, gpu, exported_pod) (DCGM_FI_DEV_FB_USED unless on(exported_pod) label_replace(group by (pod)(vllm:num_requests_running) or group by (pod)(vllm:cache_config_info), "exported_pod", "$1", "pod", "(.*)")) * 1048576, "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(sum by (hostname, gpu, exported_pod) ((DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) unless on(exported_pod) label_replace(group by (pod)(vllm:num_requests_running) or group by (pod)(vllm:cache_config_info), "exported_pod", "$1", "pod", "(.*)")) * 1048576, "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'round(label_replace(sum by (hostname, gpu, exported_pod) (DCGM_FI_DEV_FB_USED unless on(exported_pod) label_replace(group by (pod)(vllm:num_requests_running) or group by (pod)(vllm:cache_config_info), "exported_pod", "$1", "pod", "(.*)")) / sum by (hostname, gpu, exported_pod) ((DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) unless on(exported_pod) label_replace(group by (pod)(vllm:num_requests_running) or group by (pod)(vllm:cache_config_info), "exported_pod", "$1", "pod", "(.*)")) * 100, "node", "$1", "hostname", "^([^.]+).*"), 0.1)'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+      gpuEngineVsRequests:
+        kind: Panel
+        spec:
+          display:
+            name: GPU Engine Active vs Running Requests
+            description: "GPU compute engine activity (%) and running vLLM request count for the selected model. Use this to confirm that inference load drives GPU activity and to spot idle gaps."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.1
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              legend:
+                mode: list
+                position: bottom
+                values: []
+              querySettings:
+              - queryIndex: 0
+                format:
+                  unit: percent-decimal
+              - queryIndex: 1
+                format:
+                  unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'avg(DCGM_FI_PROF_GR_ENGINE_ACTIVE and on(exported_pod) label_replace((count by (pod)(vllm:cache_config_info{model_name=~"$model_name"}) OR group by (pod)(vllm:num_requests_running{model_name=~"$model_name"})), "exported_pod", "$1", "pod", "(.*)"))'
+                  seriesNameFormat: GPU Engine Active (avg)
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(vllm:num_requests_running{model_name=~"$model_name"})'
+                  seriesNameFormat: Running Requests
+      meanGpuEngineActive:
+        kind: Panel
+        spec:
+          display:
+            name: Mean GPU Engine Active
+            description: "Mean GPU engine activity for the selected model over the time range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: mean
+              format:
+                unit: percent-decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'avg(DCGM_FI_PROF_GR_ENGINE_ACTIVE and on(exported_pod) label_replace((count by (pod)(vllm:cache_config_info{model_name=~"$model_name"}) OR group by (pod)(vllm:num_requests_running{model_name=~"$model_name"})), "exported_pod", "$1", "pod", "(.*)"))'
+                  seriesNameFormat: GPU Engine Active (avg)
+      totalRequestsModel:
+        kind: Panel
+        spec:
+          display:
+            name: Total Requests
+            description: "Total requests completed (any reason) within the selected time window for the selected model."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                decimalPlaces: 0
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(increase(vllm:request_success_total{model_name=~"$model_name"}[$__range:]))'
+                  seriesNameFormat: Requests
+      tensorCoreVsTokens:
+        kind: Panel
+        spec:
+          display:
+            name: Tensor Core Active vs Token Throughput
+            description: "Tensor cores execute transformer attention and FFN matmuls — high throughput should track directly with tensor core utilisation."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.1
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              legend:
+                mode: list
+                position: bottom
+                values: []
+              querySettings:
+              - queryIndex: 0
+                format:
+                  unit: percent-decimal
+              - queryIndex: 1
+                format:
+                  unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'avg(DCGM_FI_PROF_PIPE_TENSOR_ACTIVE and on(exported_pod) label_replace((count by (pod)(vllm:cache_config_info{model_name=~"$model_name"}) OR group by (pod)(vllm:num_requests_running{model_name=~"$model_name"})), "exported_pod", "$1", "pod", "(.*)"))'
+                  seriesNameFormat: Tensor Core Active (avg)
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(rate(vllm:generation_tokens_total{model_name=~"$model_name"}[5m]))'
+                  seriesNameFormat: Output Tokens/sec
+      dramBandwidthVsKv:
+        kind: Panel
+        spec:
+          display:
+            name: DRAM Bandwidth vs KV Cache Utilisation
+            description: "KV cache reads/writes are memory-bound. DRAM bandwidth spikes when long sequences or many concurrent requests fill the KV cache. Both series on the same axis as both are 0–1 ratios."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.1
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              legend:
+                mode: list
+                position: bottom
+                values: []
+              querySettings:
+              - queryIndex: 0
+                format:
+                  unit: percent-decimal
+              - queryIndex: 1
+                format:
+                  unit: percent-decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'avg(DCGM_FI_PROF_DRAM_ACTIVE and on(exported_pod) label_replace((count by (pod)(vllm:cache_config_info{model_name=~"$model_name"}) OR group by (pod)(vllm:num_requests_running{model_name=~"$model_name"})), "exported_pod", "$1", "pod", "(.*)"))'
+                  seriesNameFormat: DRAM Active (avg)
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'avg(vllm:kv_cache_usage_perc{model_name=~"$model_name"})'
+                  seriesNameFormat: KV Cache %
+      vramUsedPerGpu:
+        kind: Panel
+        spec:
+          display:
+            name: VRAM Used
+            description: "VRAM currently in use on the selected GPU(s)."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: bytes
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'DCGM_FI_DEV_FB_USED{hostname=~"$gpu_node.*", gpu=~"$gpu_index"} * 1048576'
+                  seriesNameFormat: 'GPU{{gpu}} @ {{hostname}}'
+      vramTotalPerGpu:
+        kind: Panel
+        spec:
+          display:
+            name: VRAM Total
+            description: "Total VRAM capacity on the selected GPU(s)."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: bytes
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: '(DCGM_FI_DEV_FB_USED{hostname=~"$gpu_node.*", gpu=~"$gpu_index"} + DCGM_FI_DEV_FB_FREE{hostname=~"$gpu_node.*", gpu=~"$gpu_index"}) * 1048576'
+                  seriesNameFormat: 'GPU{{gpu}} @ {{hostname}}'
+      vramUtilPerGpu:
+        kind: Panel
+        spec:
+          display:
+            name: VRAM Utilisation %
+            description: "VRAM utilisation % on the selected GPU(s). High values indicate a well-loaded GPU."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: percent-decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'DCGM_FI_DEV_FB_USED{hostname=~"$gpu_node.*", gpu=~"$gpu_index"} / (DCGM_FI_DEV_FB_USED{hostname=~"$gpu_node.*", gpu=~"$gpu_index"} + DCGM_FI_DEV_FB_FREE{hostname=~"$gpu_node.*", gpu=~"$gpu_index"})'
+                  seriesNameFormat: 'GPU{{gpu}} @ {{hostname}}'
+      selectedGpu:
+        kind: Panel
+        spec:
+          display:
+            name: Selected GPU
+          plugin:
+            kind: Markdown
+            spec:
+              text: "# $gpu_node · GPU$gpu_index"
+      podAssignment:
+        kind: Panel
+        spec:
+          display:
+            name: Pod Assignment
+            description: "Which pod is currently running on each GPU of the selected node."
+          plugin:
+            kind: Table
+            spec:
+              density: standard
+              columnSettings:
+              - name: timestamp
+                hide: true
+              - name: value
+                hide: true
+              - name: hostname
+                hide: true
+              - name: node
+                header: Node
+                enableSorting: true
+                sort: asc
+              - name: gpu
+                header: GPU
+                enableSorting: true
+              - name: exported_pod
+                header: Pod
+                enableSorting: true
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(group by (hostname, gpu, exported_pod) (DCGM_FI_DEV_FB_USED{hostname=~"$gpu_node.*", gpu=~"$gpu_index"}), "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+      gpuEngineActive:
+        kind: Panel
+        spec:
+          display:
+            name: GPU Engine Active
+            description: "GPU compute engine activity for the selected GPU(s)."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.15
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              yAxis:
+                format:
+                  unit: percent-decimal
+                min: 0
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(DCGM_FI_PROF_GR_ENGINE_ACTIVE{hostname=~"$gpu_node.*", gpu=~"$gpu_index"}, "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+      tensorCoreActive:
+        kind: Panel
+        spec:
+          display:
+            name: Tensor Core Active
+            description: "Tensor core utilisation for the selected GPU(s). Spikes during prompt prefill; lower during decode (which is memory-bandwidth bound)."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.15
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              yAxis:
+                format:
+                  unit: percent-decimal
+                min: 0
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{hostname=~"$gpu_node.*", gpu=~"$gpu_index"}, "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+      dramBandwidth:
+        kind: Panel
+        spec:
+          display:
+            name: DRAM Bandwidth Active
+            description: "DRAM memory bandwidth utilisation for the selected GPU(s)."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.1
+                connectNulls: false
+                display: line
+                lineWidth: 1.5
+              yAxis:
+                format:
+                  unit: percent-decimal
+                min: 0
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(DCGM_FI_PROF_DRAM_ACTIVE{hostname=~"$gpu_node.*", gpu=~"$gpu_index"}, "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+      nvlinkBandwidth:
+        kind: Panel
+        spec:
+          display:
+            name: NVLink Bandwidth (bytes/s)
+            description: "NVLink inter-GPU bandwidth in bytes/s — relevant for tensor-parallel multi-GPU inference. Shows no data if NVLink metrics are not scraped in this cluster."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.1
+                connectNulls: false
+                display: line
+                lineWidth: 1.5
+              yAxis:
+                format:
+                  unit: bytes
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(rate(DCGM_FI_PROF_NVLINK_TX_BYTES{hostname=~"$gpu_node.*", gpu=~"$gpu_index"}[5m]), "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: 'TX · {{node}} · GPU{{gpu}}'
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(rate(DCGM_FI_PROF_NVLINK_RX_BYTES{hostname=~"$gpu_node.*", gpu=~"$gpu_index"}[5m]), "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: 'RX · {{node}} · GPU{{gpu}}'
+      clusterPowerDraw:
+        kind: Panel
+        spec:
+          display:
+            name: Cluster GPU Power Draw (W)
+            description: "Total power draw across all GPUs in watts. Rises significantly under inference load."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(DCGM_FI_DEV_POWER_USAGE)'
+                  seriesNameFormat: Power Draw
+      avgGpuTemp:
+        kind: Panel
+        spec:
+          display:
+            name: Avg GPU Temperature (°C)
+            description: "Mean GPU core temperature in °C across all active GPUs in the cluster."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'avg(DCGM_FI_DEV_GPU_TEMP)'
+                  seriesNameFormat: Avg GPU Temp
+      powerDrawPerGpu:
+        kind: Panel
+        spec:
+          display:
+            name: Power Draw per GPU (W)
+            description: "Current power draw in watts per GPU. L4 idles at ~16–35 W with a model loaded, and can reach 70–120 W during active inference."
+          plugin:
+            kind: Table
+            spec:
+              density: standard
+              columnSettings:
+              - name: timestamp
+                hide: true
+              - name: hostname
+                hide: true
+              - name: node
+                header: Node
+                enableSorting: true
+                sort: asc
+              - name: gpu
+                header: GPU
+                enableSorting: true
+              - name: value
+                header: Power (W)
+                format:
+                  unit: decimal
+                  decimalPlaces: 1
+                enableSorting: true
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(sum by (gpu, hostname) (DCGM_FI_DEV_POWER_USAGE), "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+      gpuTempPerGpu:
+        kind: Panel
+        spec:
+          display:
+            name: GPU Temperature per GPU (°C)
+            description: "Current GPU core temperature in °C per GPU. Sustained temps above 70°C may trigger thermal throttling."
+          plugin:
+            kind: Table
+            spec:
+              density: standard
+              columnSettings:
+              - name: timestamp
+                hide: true
+              - name: hostname
+                hide: true
+              - name: node
+                header: Node
+                enableSorting: true
+                sort: asc
+              - name: gpu
+                header: GPU
+                enableSorting: true
+              - name: value
+                header: Temp (°C)
+                format:
+                  unit: decimal
+                  decimalPlaces: 1
+                enableSorting: true
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'label_replace(sum by (gpu, hostname) (DCGM_FI_DEV_GPU_TEMP), "node", "$1", "hostname", "^([^.]+).*")'
+                  seriesNameFormat: '{{node}} · GPU{{gpu}}'
+      xidErrors:
+        kind: Panel
+        spec:
+          display:
+            name: XID Errors
+            description: "NVIDIA XID error events. Any non-zero value indicates a GPU hardware or driver error."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.15
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'DCGM_FI_DEV_XID_ERRORS'
+                  seriesNameFormat: 'GPU{{gpu}} @ {{hostname}}'
+      pcieReplay:
+        kind: Panel
+        spec:
+          display:
+            name: PCIe Replay Counter
+            description: "PCIe replay counter — persistent non-zero values indicate PCIe link instability."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.15
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'DCGM_FI_DEV_PCIE_REPLAY_COUNTER'
+                  seriesNameFormat: 'GPU{{gpu}} @ {{hostname}}'
+      memoryTemp:
+        kind: Panel
+        spec:
+          display:
+            name: Memory Temperature (°C)
+            description: "GPU memory temperature in °C. High values can cause clock throttling."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.15
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              yAxis:
+                format:
+                  unit: decimal
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'DCGM_FI_DEV_MEMORY_TEMP'
+                  seriesNameFormat: 'GPU{{gpu}} @ {{hostname}}'

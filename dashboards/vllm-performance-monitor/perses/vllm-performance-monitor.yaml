@@ -1,0 +1,823 @@
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  name: dashboard-99-vllm-performance-monitor
+  namespace: redhat-ods-monitoring
+  labels:
+    platform.opendatahub.io/part-of: dashboard
+spec:
+  config:
+    display:
+      name: "[C] - vLLM Performance Monitor"
+    duration: 2d
+    variables:
+    - kind: ListVariable
+      spec:
+        allowAllValue: true
+        allowMultiple: false
+        name: model_name
+        display:
+          name: Model
+        plugin:
+          kind: PrometheusLabelValuesVariable
+          spec:
+            datasource:
+              kind: PrometheusDatasource
+              name: cluster-prometheus-datasource
+            labelName: model_name
+            matchers:
+            - vllm:num_requests_running
+    layouts:
+    - kind: Grid
+      spec:
+        display:
+          collapse:
+            open: true
+          title: KV Cache Stats
+        items:
+        - content:
+            $ref: '#/spec/panels/kvCacheUsage'
+          height: 8
+          width: 16
+          x: 0
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/peakKvCache'
+          height: 4
+          width: 4
+          x: 16
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/avgKvCache'
+          height: 4
+          width: 4
+          x: 16
+          "y": 4
+        - content:
+            $ref: '#/spec/panels/timeAbovePeak'
+          height: 8
+          width: 4
+          x: 20
+          "y": 0
+    - kind: Grid
+      spec:
+        display:
+          collapse:
+            open: true
+          title: Request Stats
+        items:
+        - content:
+            $ref: '#/spec/panels/schedulerState'
+          height: 8
+          width: 16
+          x: 0
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/peakRunning'
+          height: 4
+          width: 4
+          x: 16
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/peakWaiting'
+          height: 4
+          width: 4
+          x: 20
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/idleDuration'
+          height: 4
+          width: 4
+          x: 16
+          "y": 4
+        - content:
+            $ref: '#/spec/panels/totalRequests'
+          height: 4
+          width: 4
+          x: 20
+          "y": 4
+    - kind: Grid
+      spec:
+        display:
+          collapse:
+            open: true
+          title: Token Throughput
+        items:
+        - content:
+            $ref: '#/spec/panels/tokenThroughput'
+          height: 8
+          width: 16
+          x: 0
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/totalInputTokens'
+          height: 4
+          width: 4
+          x: 16
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/totalOutputTokens'
+          height: 4
+          width: 4
+          x: 20
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/peakOutputTokens'
+          height: 4
+          width: 4
+          x: 16
+          "y": 4
+        - content:
+            $ref: '#/spec/panels/peakInputTokens'
+          height: 4
+          width: 4
+          x: 20
+          "y": 4
+    - kind: Grid
+      spec:
+        display:
+          collapse:
+            open: true
+          title: Request Characteristics
+        items:
+        - content:
+            $ref: '#/spec/panels/tokensPerSecPerRequest'
+          height: 8
+          width: 16
+          x: 0
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/avgInputTokensPerReq'
+          height: 4
+          width: 4
+          x: 16
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/avgOutputTokensPerReq'
+          height: 4
+          width: 4
+          x: 20
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/inputOutputRatio'
+          height: 4
+          width: 8
+          x: 16
+          "y": 4
+    - kind: Grid
+      spec:
+        display:
+          collapse:
+            open: true
+          title: Latency Overview
+        items:
+        - content:
+            $ref: '#/spec/panels/e2eLatency'
+          height: 8
+          width: 12
+          x: 0
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/ttft'
+          height: 8
+          width: 12
+          x: 12
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/latencyVsKvCache'
+          height: 8
+          width: 24
+          x: 0
+          "y": 8
+    panels:
+      kvCacheUsage:
+        kind: Panel
+        spec:
+          display:
+            name: KV Cache Usage
+            description: "GPU and CPU KV cache usage over the selected time range. Higher means more utilisation."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.15
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              yAxis:
+                format:
+                  unit: percent-decimal
+                min: 0
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'vllm:kv_cache_usage_perc{model_name="$model_name"}'
+                  seriesNameFormat: GPU Cache
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'vllm:cpu_cache_usage_perc{model_name="$model_name"}'
+                  seriesNameFormat: CPU Cache
+      peakKvCache:
+        kind: Panel
+        spec:
+          display:
+            name: Peak KV Cache Usage
+            description: "Peak KV cache usage reached in the selected time range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: max
+              format:
+                decimalPlaces: 4
+                unit: percent-decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'max(vllm:kv_cache_usage_perc{model_name="$model_name"})'
+                  seriesNameFormat: Peak KV Cache
+      avgKvCache:
+        kind: Panel
+        spec:
+          display:
+            name: Avg KV Cache Usage
+            description: "Average KV cache usage over the selected time range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                decimalPlaces: 4
+                unit: percent-decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'max(avg_over_time(vllm:kv_cache_usage_perc{model_name="$model_name"}[$__range]))'
+                  seriesNameFormat: Avg KV Cache
+      timeAbovePeak:
+        kind: Panel
+        spec:
+          display:
+            name: Cache Load CV
+            description: "Coefficient of Variation (stddev / mean) of KV cache usage over the selected range. Values near 0 indicate sustained, steady load; higher values indicate bursty load with large swings. Guarded against division by zero when the model is idle."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                decimalPlaces: 2
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'max(stddev_over_time(vllm:kv_cache_usage_perc{model_name="$model_name"}[$__range])) / clamp_min(avg(avg_over_time(vllm:kv_cache_usage_perc{model_name="$model_name"}[$__range])), 0.001)'
+                  seriesNameFormat: CV
+      schedulerState:
+        kind: Panel
+        spec:
+          display:
+            name: Scheduler State
+            description: "Number of requests in RUNNING, WAITING, and SWAPPED state."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.15
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'vllm:num_requests_running{model_name="$model_name"}'
+                  seriesNameFormat: Num Running
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'vllm:num_requests_waiting{model_name="$model_name"}'
+                  seriesNameFormat: Num Waiting
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'vllm:num_requests_swapped{model_name="$model_name"}'
+                  seriesNameFormat: Num Swapped
+      peakRunning:
+        kind: Panel
+        spec:
+          display:
+            name: Peak Running
+            description: "Peak running requests in the selected range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: max
+              format:
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'max(max_over_time(vllm:num_requests_running{model_name="$model_name"}[$__range]))'
+                  seriesNameFormat: Peak Running
+      peakWaiting:
+        kind: Panel
+        spec:
+          display:
+            name: Peak Waiting
+            description: "Peak waiting requests in the selected range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: max
+              format:
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'max(max_over_time(vllm:num_requests_waiting{model_name="$model_name"}[$__range]))'
+                  seriesNameFormat: Peak Waiting
+      idleDuration:
+        kind: Panel
+        spec:
+          display:
+            name: Idle Duration (Total)
+            description: "Total downtime/idle periods (zero running + zero waiting) in the selected range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                decimalPlaces: 1
+                unit: seconds
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: "max(count_over_time(((vllm:num_requests_running{model_name='$model_name'} + vllm:num_requests_waiting{model_name='$model_name'}) == 0)[$__range:5s])) * 5"
+                  seriesNameFormat: Downtime
+      totalRequests:
+        kind: Panel
+        spec:
+          display:
+            name: Total Requests
+            description: "Total number of completed requests in the selected time range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                decimalPlaces: 0
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(increase(vllm:request_success_total{model_name="$model_name"}[$__range:]))'
+                  seriesNameFormat: Total Requests
+      tokenThroughput:
+        kind: Panel
+        spec:
+          display:
+            name: Token Throughput
+            description: "Tokens processed per second over the selected time range."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.15
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'rate(vllm:generation_tokens_total{model_name="$model_name"}[5m])'
+                  seriesNameFormat: Output Tokens/sec
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'rate(vllm:prompt_tokens_total{model_name="$model_name"}[5m])'
+                  seriesNameFormat: Input Tokens/sec
+      totalOutputTokens:
+        kind: Panel
+        spec:
+          display:
+            name: Total Output Tokens
+            description: "Total output tokens generated in the selected time range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(increase(vllm:generation_tokens_total{model_name="$model_name"}[$__range:]))'
+                  seriesNameFormat: Total Output
+      totalInputTokens:
+        kind: Panel
+        spec:
+          display:
+            name: Total Input Tokens
+            description: "Total input tokens processed in the selected time range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(increase(vllm:prompt_tokens_total{model_name="$model_name"}[$__range:]))'
+                  seriesNameFormat: Total Input
+      peakOutputTokens:
+        kind: Panel
+        spec:
+          display:
+            name: Peak Output Tokens/sec
+            description: "Peak generation tokens per second in the selected range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: max
+              format:
+                decimalPlaces: 1
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'max(rate(vllm:generation_tokens_total{model_name="$model_name"}[5m]))'
+                  seriesNameFormat: Peak Output
+      peakInputTokens:
+        kind: Panel
+        spec:
+          display:
+            name: Peak Input Tokens/sec
+            description: "Peak prompt tokens per second in the selected range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: max
+              format:
+                decimalPlaces: 1
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'max(rate(vllm:prompt_tokens_total{model_name="$model_name"}[5m]))'
+                  seriesNameFormat: Peak Input
+      tokensPerSecPerRequest:
+        kind: Panel
+        spec:
+          display:
+            name: Tokens Per Second Per Request (30m avg)
+            description: "Average tokens generated per second per request during decode phase (30-minute rolling average). Shows user-perceived token generation speed."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0.15
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'rate(vllm:request_generation_tokens_sum{model_name="$model_name"}[30m]) / rate(vllm:request_decode_time_seconds_sum{model_name="$model_name"}[30m])'
+                  seriesNameFormat: Output Tokens/sec per Request
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'vllm:num_requests_running{model_name="$model_name"}'
+                  seriesNameFormat: Concurrent Requests
+      avgInputTokensPerReq:
+        kind: Panel
+        spec:
+          display:
+            name: Avg Input Tokens/req
+            description: "Average number of input tokens per completed request in the selected time range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                decimalPlaces: 0
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(increase(vllm:prompt_tokens_total{model_name="$model_name"}[$__range:])) / sum(increase(vllm:request_success_total{model_name="$model_name"}[$__range:]))'
+                  seriesNameFormat: Avg Input Tokens/req
+      avgOutputTokensPerReq:
+        kind: Panel
+        spec:
+          display:
+            name: Avg Output Tokens/req
+            description: "Average number of output tokens per completed request in the selected time range."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                decimalPlaces: 0
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(increase(vllm:generation_tokens_total{model_name="$model_name"}[$__range:])) / sum(increase(vllm:request_success_total{model_name="$model_name"}[$__range:]))'
+                  seriesNameFormat: Avg Output Tokens/req
+      inputOutputRatio:
+        kind: Panel
+        spec:
+          display:
+            name: Input:Output Token Ratio
+            description: "Ratio of input tokens to output tokens. A higher ratio means requests are prompt-heavy relative to generated output."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last-number
+              format:
+                decimalPlaces: 1
+                unit: decimal
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'sum(increase(vllm:prompt_tokens_total{model_name="$model_name"}[$__range:])) / sum(increase(vllm:generation_tokens_total{model_name="$model_name"}[$__range:]))'
+                  seriesNameFormat: Input:Output Ratio
+      e2eLatency:
+        kind: Panel
+        spec:
+          display:
+            name: E2E Request Latency
+            description: "End-to-end request latency percentiles."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              yAxis:
+                format:
+                  unit: seconds
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'histogram_quantile(0.99, sum by(le) (rate(vllm:e2e_request_latency_seconds_bucket{model_name="$model_name"}[5m])))'
+                  seriesNameFormat: P99
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'histogram_quantile(0.95, sum by(le) (rate(vllm:e2e_request_latency_seconds_bucket{model_name="$model_name"}[5m])))'
+                  seriesNameFormat: P95
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'histogram_quantile(0.5, sum by(le) (rate(vllm:e2e_request_latency_seconds_bucket{model_name="$model_name"}[5m])))'
+                  seriesNameFormat: P50
+      ttft:
+        kind: Panel
+        spec:
+          display:
+            name: Time To First Token (TTFT)
+            description: "Time to first token latency percentiles."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              yAxis:
+                format:
+                  unit: seconds
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'histogram_quantile(0.99, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket{model_name="$model_name"}[5m])))'
+                  seriesNameFormat: P99 TTFT
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'histogram_quantile(0.95, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket{model_name="$model_name"}[5m])))'
+                  seriesNameFormat: P95 TTFT
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'histogram_quantile(0.5, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket{model_name="$model_name"}[5m])))'
+                  seriesNameFormat: P50 TTFT
+      latencyVsKvCache:
+        kind: Panel
+        spec:
+          display:
+            name: Mean E2E Latency
+            description: "Mean E2E request latency over the selected time range."
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              visual:
+                areaOpacity: 0
+                connectNulls: false
+                display: line
+                lineWidth: 2
+              legend:
+                mode: list
+                position: bottom
+                values: []
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  datasource:
+                    kind: PrometheusDatasource
+                    name: cluster-prometheus-datasource
+                  query: 'rate(vllm:e2e_request_latency_seconds_sum{model_name="$model_name"}[5m]) / rate(vllm:e2e_request_latency_seconds_count{model_name="$model_name"}[5m])'
+                  seriesNameFormat: E2E Latency Mean

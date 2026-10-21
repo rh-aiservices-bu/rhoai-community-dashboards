@@ -1,0 +1,77 @@
+# Template for a custom Perses dashboard.
+# Replace every <PLACEHOLDER>, remove this comment block, and check it against
+# `./validation/scripts/validate_dashboards.sh` before committing.
+#
+# - metadata.name:  dashboard-99-<slug>, or dashboard-99-<slug>-admin if it's
+#   genuinely cluster-wide. 99 sorts after every built-in dashboard-<n>-...
+#   resource; don't use a lower number.
+# - display.name:   must start with "[C] - " to mark it as a community dashboard.
+# - namespace:      must be redhat-ods-monitoring, where the datasource lives.
+# - datasource.name: data-science-prometheus-datasource or
+#   cluster-prometheus-datasource only.
+# - Never hardcode model_name/model to a literal; use the $model variable below.
+# - Quote every "y" key under layouts — unquoted it parses as boolean true.
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  name: dashboard-99-<SLUG>
+  namespace: redhat-ods-monitoring
+spec:
+  config:
+    display:
+      name: "[C] - <DASHBOARD TITLE>"
+      description: "<ONE-SENTENCE DESCRIPTION OF WHAT THE DASHBOARD SHOWS>"
+    duration: 1h
+    refreshInterval: 30s
+    variables:
+      - kind: ListVariable
+        spec:
+          name: model
+          display:
+            name: Model
+          allowAllValue: true
+          allowMultiple: false
+          defaultValue: $__all
+          customAllValue: ".*"
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              datasource:
+                kind: PrometheusDatasource
+                name: data-science-prometheus-datasource
+              labelName: model_name
+              matchers:
+                - <METRIC_NAME>
+    panels:
+      <panelKey>:
+        kind: Panel
+        spec:
+          display:
+            name: "<PANEL TITLE>"
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: data-science-prometheus-datasource
+                    query: sum by (model_name) (<METRIC_NAME>{model_name=~"$model"})
+    layouts:
+      - kind: Grid
+        spec:
+          display:
+            title: <SECTION TITLE>
+            collapse:
+              open: true
+          items:
+            - content:
+                $ref: "#/spec/panels/<panelKey>"
+              x: 0
+              "y": 0
+              width: 12
+              height: 8

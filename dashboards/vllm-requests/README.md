@@ -41,7 +41,7 @@ oc apply -f dashboards/vllm-requests/perses/
 The namespace is set in the manifest and matters: `PersesDatasource` is
 project-scoped, so a dashboard outside `redhat-ods-monitoring` applies cleanly
 and then renders empty with no error anywhere. See
-[Deploy a Perses Dashboard](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/deploy-perses.html).
+[Deploy a Perses Dashboard](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/deploy-perses.html).
 
 Remove it with:
 

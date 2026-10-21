@@ -242,7 +242,7 @@ for s in SHAPES:
                   "elbowed": False})
         els.append(a)
 
-doc = {"type": "excalidraw", "version": 2, "source": "rhoai-dashboards-as-code",
+doc = {"type": "excalidraw", "version": 2, "source": "rhoai-community-dashboards",
        "elements": els,
        "appState": {"gridSize": None, "viewBackgroundColor": "#ffffff"},
        "files": {}}

@@ -185,7 +185,7 @@ Three details in that manifest are worth more than they look:
 
 `"y": 0`:: The quotes are load-bearing. YAML 1.1 parses an unquoted `y` as boolean `true`, so `y: 0` becomes the key `true` and the layout silently loses its vertical position. Quote every `y` key in `layouts`.
 
-`$ref: "#/spec/panels/runningRequests"`:: The reference resolves against the Perses dashboard spec, not the Kubernetes object. It stays `#/spec/panels/...` even though the panels sit under `spec.config.panels` in `{perses-api}`. Rewriting it to `#/spec/config/panels/...` breaks the layout.
+`$ref: "#/spec/panels/runningRequests"`:: The reference resolves against the Perses dashboard spec, not the Kubernetes object. It stays `+#/spec/panels/...+` even though the panels sit under `spec.config.panels` in `{perses-api}`. Rewriting it to `+#/spec/config/panels/...+` breaks the layout.
 
 `matchers`:: Scoping label values to a metric keeps the dropdown to models that actually serve traffic instead of every `model_name` ever scraped.
 
@@ -256,14 +256,14 @@ info Reconciling PersesDashboard: redhat-ods-monitoring/dashboard-99-vllm-reques
 info Dashboard updated: dashboard-99-vllm-requests
 ----
 
-Then open *Observe* -> *Observability* in the {rhoai-short} console. The dashboard appears as a tab, after the built-in ones, with the `[C] -` prefix on its title.
+Then open *Observe* \-> *Observability* in the {rhoai-short} console. The dashboard appears as a tab, after the built-in ones, with the `[C] -` prefix on its title.
 
 == When panels are empty
 
 The dashboard rendered, so the manifest is valid and the operator is reconciling it. What is left is the data path. In order of likelihood:
 
 . *The datasource is in another namespace.* `oc get persesdatasources -n <your-dashboard-namespace>` returns nothing. Move the dashboard to `{monitoring-ns}`.
-. *The metric does not exist on this cluster.* Query it directly in *Observe* -> *Metrics* with no label filters. vLLM metric names vary between runtime versions, and a metric that was renamed in a newer vLLM returns nothing without erroring.
+. *The metric does not exist on this cluster.* Query it directly in *Observe* \-> *Metrics* with no label filters. vLLM metric names vary between runtime versions, and a metric that was renamed in a newer vLLM returns nothing without erroring.
 . *The variable matched nothing.* An empty `model` dropdown means `matchers` selected a metric with no series. The panel query then filters on an empty variable and returns no data.
 . *A label was renamed.* Metrics gained a `_total` suffix between some {rhoai-short} releases, and label names have moved too. Compare against a built-in dashboard's query for the same data.
 

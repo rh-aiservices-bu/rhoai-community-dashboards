@@ -1,4 +1,4 @@
-= RHOAI Dashboards as Code
+= RHOAI Community Dashboards
 
 Community-maintained Perses and Grafana dashboards for {rhoai}, kept in Git and deployed with `oc apply`.
 
@@ -8,7 +8,7 @@ Community-maintained Perses and Grafana dashboards for {rhoai}, kept in Git and 
 
 IMPORTANT: Dashboards in this repository use the out-of-the-box datasource supplied by the {rhoai-short} Monitoring Stack (`{perses-ds}`). That single constraint is what makes them portable: a dashboard here works on any cluster with the Monitoring Stack enabled, with no exporters, recording rules, or datasource wiring to set up first. Dashboards that need more than that are still welcome: they are linked from the xref:custom-dashboards.adoc#_dashboard_register[dashboard register] and maintained by their authors.
 
-== Why dashboards as code
+== Why RHOAI Community Dashboards
 
 The {rhoai-short} console ships a handful of dashboards covering models, serving traffic, and utilization. They answer the questions the product team anticipated. They do not answer "is the queue depth on *our* summarization service drifting again", because that question is specific to your models, your naming, and your organization.
 
@@ -54,7 +54,7 @@ Dashboards here are community contributions, not Red Hat supported product conte
 
 == Reference
 
-* link:{repo-url}[rhoai-dashboards-as-code repository]
+* link:{repo-url}[rhoai-community-dashboards repository]
 * link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/managing_and_monitoring_models/managing_and_monitoring_models#configuring-monitoring-for-the-model-serving-platform_cluster-admin[RHOAI 3.5: Configuring monitoring for the model serving platform]
 * link:https://perses.dev/perses/docs/[Perses documentation]
 * link:https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards[Grafana dashboard provisioning]

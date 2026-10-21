@@ -4,16 +4,16 @@ A community-driven collection of custom dashboards as code for Red Hat OpenShift
 
 Contributions include Perses and Grafana dashboards or entries in the [dashboard register](https://github.com/rh-aiservices-bu/rhoai-dashboards-as-code/tree/main/dashboards#dashboard-register) - an index of dashboards that live off-repository.
 
-**Full documentation:** https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/
+**Full documentation:** https://rh-aiservices-bu.github.io/rhoai-community-dashboards/
 
 | Guide | What it covers |
 |-------|----------------|
-| [Overview](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/index.html) | What this repository is for and what it requires |
-| [Custom Dashboards](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/custom-dashboards.html) | Naming and ordering conventions, Perses vs Grafana, the dashboard register |
-| [Repository Structure](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/repository-structure.html) | Directory layout, the dashboard directory contract, what CI checks |
-| [Deploy a Perses Dashboard](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/deploy-perses.html) | Verifying the Monitoring Stack, applying a `PersesDashboard`, troubleshooting |
-| [The RHOAI Monitoring Stack](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/rhoai-monitoring.html) | What the platform deploys and where dashboard data comes from |
-| [Contribution Guide](https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/contributing.html) | Scope, workflow, the README each dashboard needs, review gates |
+| [Overview](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/index.html) | What this repository is for and what it requires |
+| [Custom Dashboards](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/custom-dashboards.html) | Naming and ordering conventions, Perses vs Grafana, the dashboard register |
+| [Repository Structure](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/repository-structure.html) | Directory layout, the dashboard directory contract, what CI checks |
+| [Deploy a Perses Dashboard](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/deploy-perses.html) | Verifying the Monitoring Stack, applying a `PersesDashboard`, troubleshooting |
+| [The RHOAI Monitoring Stack](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/rhoai-monitoring.html) | What the platform deploys and where dashboard data comes from |
+| [Contribution Guide](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/contributing.html) | Scope, workflow, the README each dashboard needs, review gates |
 
 ## What is a custom dashboard?
 

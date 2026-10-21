@@ -3,7 +3,7 @@
 #
 # Scope note: the deterministic rules (directory layout, datasource,
 # naming, hardcoded models) are enforced by
-# validation/scripts/validate_dashboards.py in the "validate dashboards"
+# validation/scripts/validate_dashboards.sh in the "validate dashboards"
 # workflow, not here. CodeRabbit is asked for the judgement calls that a
 # script cannot make, so the two layers do not duplicate each other.
 language: en-US

@@ -131,14 +131,38 @@ check_perses_file() {
 }
 
 # --------------------------------------------------------------- grafana
+# Two shapes are valid, because both deploy with a single oc apply:
+#   1. a GrafanaDashboard CR in YAML with the dashboard inline in spec.json
+#   2. a raw dashboard .json, usually next to a CR that references it
+# Requiring .json only would reject shape 1, which is the tidier of the two.
 check_grafana_dir() {
-  local d="$1" found=0 j
-  for j in "$d"/*.json; do
-    [ -e "$j" ] || continue
+  local d="$1" found=0 f kind embedded
+  for f in "$d"/*.json; do
+    [ -e "$f" ] || continue
     found=1
-    jq empty "$j" >/dev/null 2>&1 || err "$j" "invalid JSON"
+    jq empty "$f" >/dev/null 2>&1 || err "$f" "invalid JSON"
   done
-  [ "$found" -eq 0 ] && err "$d" "grafana/ present but contains no .json dashboard"
+  for f in "$d"/*.yaml "$d"/*.yml; do
+    [ -e "$f" ] || continue
+    found=1
+    if ! yq e 'true' "$f" >/dev/null 2>&1; then
+      err "$f" "invalid YAML"
+      continue
+    fi
+    kind=$(yq e '.kind // ""' "$f")
+    if [ "$kind" != "GrafanaDashboard" ]; then
+      err "$f" "kind is '$kind', expected 'GrafanaDashboard'"
+      continue
+    fi
+    # spec.json holds the dashboard itself; a malformed blob renders nothing.
+    if [ "$(yq e '.spec | has("json")' "$f")" = "true" ]; then
+      embedded=$(yq e '.spec.json' "$f")
+      printf '%s' "$embedded" | jq empty >/dev/null 2>&1 \
+        || err "$f" "spec.json does not parse as JSON"
+    fi
+  done
+  [ "$found" -eq 0 ] \
+    && err "$d" "grafana/ present but contains no dashboard (.json or a GrafanaDashboard .yaml)"
   return 0
 }
 

@@ -52,7 +52,7 @@ A directory under `dashboards/` is named after the dashboard in lowercase with h
 | Required if a Perses version exists. One `PersesDashboard` manifest, applied as-is.
 
 | `grafana/`
-| Required if a Grafana version exists. Dashboard JSON plus the `GrafanaDashboard` resource that wraps it.
+| Required if a Grafana version exists. Either a `GrafanaDashboard` resource with the dashboard inline in `spec.json`, or a dashboard `.json`. Both deploy with one `oc apply`, so both are accepted.
 |===
 
 At least one of `perses/` or `grafana/` must be present. Both is welcome; neither format is mandatory and the two are never checked against each other.
@@ -92,7 +92,7 @@ needs a language model:
 * `metadata.name` matches `dashboard-99-<slug>[-admin]` and `display.name` carries the `[C] - ` prefix
 * `apiVersion` is `{perses-api}`; `v1alpha1` is a warning rather than an error
 * No query pins `model_name` or `model` to a literal where a variable would work
-* Grafana directories contain parseable JSON
+* Grafana directories hold a dashboard: a `GrafanaDashboard` CR whose `spec.json` parses, or a parseable `.json`
 
 Run it yourself before opening a pull request. It needs `yq` and `jq`:
 

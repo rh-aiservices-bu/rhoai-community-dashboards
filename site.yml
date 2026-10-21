@@ -1,7 +1,7 @@
 ---
 site:
-  title: RHOAI Dashboards as Code
-  url: https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code
+  title: RHOAI Community Dashboards
+  url: https://rh-aiservices-bu.github.io/rhoai-community-dashboards
   start_page: modules::index.adoc
 
 content:

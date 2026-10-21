@@ -4,7 +4,7 @@ The layout exists so that a reviewer, a script, and an agent can all find the sa
 
 [source,text]
 ----
-rhoai-dashboards-as-code/
+rhoai-community-dashboards/
 ├── README.md                          <1>
 ├── dashboards/
 │   ├── README.md                      <2>

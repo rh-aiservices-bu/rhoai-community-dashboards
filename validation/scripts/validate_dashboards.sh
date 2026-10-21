@@ -2,7 +2,7 @@
 # Structural validation for dashboard contributions.
 #
 # Enforces the contract documented at
-# https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/repository-structure.html
+# https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/repository-structure.html
 #
 # Every rule here has exactly one right answer, so none of it needs a language
 # model: a missing README or an ad-hoc datasource is a fact, not a judgement.

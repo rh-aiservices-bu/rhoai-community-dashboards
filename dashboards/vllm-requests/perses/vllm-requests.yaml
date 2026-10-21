@@ -1,5 +1,5 @@
 # Example dashboard. This manifest is the one documented at
-# https://rh-aiservices-bu.github.io/rhoai-dashboards-as-code/modules/main/deploy-perses.html
+# https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/deploy-perses.html
 # Keep the two in sync: it is the reference contributors copy from.
 apiVersion: perses.dev/v1alpha2
 kind: PersesDashboard

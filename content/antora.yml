@@ -1,5 +1,5 @@
 name: modules
-title: RHOAI Dashboards as Code
+title: RHOAI Community Dashboards
 version: main
 nav:
   - modules/ROOT/nav.adoc
@@ -19,4 +19,4 @@ asciidoc:
     monitoring-ns: "redhat-ods-monitoring"
     perses-ds: "data-science-prometheus-datasource"
     perses-api: "perses.dev/v1alpha2"
-    repo-url: "https://github.com/rh-aiservices-bu/rhoai-dashboards-as-code"
+    repo-url: "https://github.com/rh-aiservices-bu/rhoai-community-dashboards"

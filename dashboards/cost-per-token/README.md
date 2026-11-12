@@ -84,7 +84,10 @@ oc delete -f dashboards/cost-per-token/rules/pricing-rule.yaml
   recomputed tokens as fresh input and the cache-read panels stay empty; the
   panels do not error. If cost numbers look too high, check the serving
   image's vLLM version via the version badge in the OpenShift AI UI. The
-  `--enable-prompt-tokens-details` and `--enable-force-include-usage` flags
-  are unrelated to these dashboard metrics; they only affect OpenAI API usage
-  reporting and are optional (add them under Configuration parameters →
-  Additional serving runtime arguments on RHOAI 3.5-era runtimes).
+  `--enable-prompt-tokens-details` and `--enable-force-include-usage` flags do
+  not gate these metrics: on serving images that export the family,
+  deployments without either flag export it too. The flags only affect OpenAI
+  API usage reporting (unconditional `usage` in streaming responses, the
+  `prompt_tokens_details` breakdown) and remain optional; add them under
+  Configuration parameters → Additional serving runtime arguments on RHOAI
+  3.5-era runtimes.

@@ -1,0 +1,689 @@
+---
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  name: dashboard-99-cost-per-token-admin
+  namespace: redhat-ods-monitoring
+  labels:
+    platform.opendatahub.io/part-of: dashboard
+spec:
+  config:
+    display:
+      name: "[C] - Cost per Token"
+    duration: 1h
+    variables:
+      - kind: ListVariable
+        spec:
+          name: namespace
+          allowAllValue: true
+          allowMultiple: true
+          customAllValue: ".*"
+          display:
+            name: "Project"
+            description: "Filter by project"
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              datasource:
+                kind: PrometheusDatasource
+                name: cluster-prometheus-datasource
+              labelName: namespace
+              matchers:
+                - "kserve_vllm:num_requests_running"
+      - kind: ListVariable
+        spec:
+          name: model_name
+          allowAllValue: true
+          allowMultiple: true
+          customAllValue: ".*"
+          display:
+            name: "Model deployment"
+            description: "Filter by model deployment"
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              datasource:
+                kind: PrometheusDatasource
+                name: cluster-prometheus-datasource
+              labelName: model_name
+              matchers:
+                - "kserve_vllm:num_requests_running{namespace=~\"$namespace\"}"
+      - kind: TextVariable
+        spec:
+          name: hw_cost_year
+          value: "0"
+          display:
+            name: "HW $/yr"
+            description: "Fully-loaded annual cost of the hardware serving this model (8,760 h/yr): purchase amortization or rental, incl. power/cooling/ops. Defaults to 0: set your own value (plain number, USD per year, no separators) or the hardware-cost panels show $0."
+      - kind: ListVariable
+        spec:
+          name: api_model
+          allowAllValue: true
+          allowMultiple: true
+          customAllValue: ".*"
+          display:
+            name: "API model"
+            description: "Comparison models across all providers (provider/model). Multi-select: the breakdown table and spend chart follow every selection."
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              datasource:
+                kind: PrometheusDatasource
+                name: cluster-prometheus-datasource
+              labelName: pair
+              matchers:
+                - "rhai_api_pricing_mtok{token_type=\"input\"}"
+      - kind: ListVariable
+        spec:
+          name: context
+          defaultValue: short
+          display:
+            name: "API context tier"
+            description: "OpenAI long-context pricing applies above 272K input tokens; Anthropic pricing is context-independent."
+          plugin:
+            kind: StaticListVariable
+            spec:
+              values:
+                - {label: "Short (<=272K input)", value: short}
+                - {label: "Long (>272K input)", value: long}
+      - kind: TextVariable
+        spec:
+          name: discount_pct
+          value: "0"
+          display:
+            name: "Provider discount (%)"
+            description: "Negotiated/volume discount applied to all API price categories. Plain number."
+    layouts:
+      - kind: Grid
+        spec:
+          display:
+            collapse:
+              open: true
+            title: "Token mix ($__range)"
+          items:
+            - content:
+                $ref: "#/spec/panels/statFresh"
+              height: 6
+              width: 8
+              "x": 0
+              "y": 0
+            - content:
+                $ref: "#/spec/panels/statCacheRead"
+              height: 6
+              width: 8
+              "x": 8
+              "y": 0
+            - content:
+                $ref: "#/spec/panels/statOutput"
+              height: 6
+              width: 8
+              "x": 16
+              "y": 0
+      - kind: Grid
+        spec:
+          display:
+            collapse:
+              open: true
+            title: "Cost on hardware"
+          items:
+            - content:
+                $ref: "#/spec/panels/statTokensRate"
+              height: 6
+              width: 12
+              "x": 0
+              "y": 0
+            - content:
+                $ref: "#/spec/panels/statHwTotal"
+              height: 6
+              width: 12
+              "x": 12
+              "y": 0
+      - kind: Grid
+        spec:
+          display:
+            collapse:
+              open: true
+            title: "What-if: selected API models"
+          items:
+            - content:
+                $ref: "#/spec/panels/breakdownTable"
+              height: 10
+              width: 24
+              "x": 0
+              "y": 0
+            - content:
+                $ref: "#/spec/panels/spendOverTime"
+              height: 8
+              width: 24
+              "x": 0
+              "y": 10
+      - kind: Grid
+        spec:
+          display:
+            collapse:
+              open: false
+            title: "Comparison caveats"
+          items:
+            - content:
+                $ref: "#/spec/panels/comparisonCaveats"
+              height: 8
+              width: 24
+              "x": 0
+              "y": 0
+      - kind: Grid
+        spec:
+          display:
+            collapse:
+              open: true
+            title: "Notes"
+          items:
+            - content:
+                $ref: "#/spec/panels/pricingNotes"
+              height: 6
+              width: 24
+              "x": 0
+              "y": 0
+    panels:
+      statFresh:
+        kind: Panel
+        spec:
+          display:
+            name: "Fresh input (compute)"
+            description: "Prompt tokens computed fresh (prompt_tokens_by_source local_compute), with fallback to prompt total minus cached/recomputed when the source breakdown is absent."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last
+              format:
+                decimalPlaces: 0
+                shortValues: true
+                unit: decimal
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      (
+                        sum(increase(kserve_vllm:prompt_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range]))
+                        - (sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                        - (sum(increase(kserve_vllm:prompt_tokens_recomputed_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                      )
+                      or vector(0)
+                    seriesNameFormat: "Fresh input"
+      statCacheRead:
+        kind: Panel
+        spec:
+          display:
+            name: "Cache reads"
+            description: "Prompt tokens served from KV cache (prompt_tokens_cached_total)."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last
+              format:
+                decimalPlaces: 0
+                shortValues: true
+                unit: decimal
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range]))
+                      or vector(0)
+                    seriesNameFormat: "Cache reads"
+      statOutput:
+        kind: Panel
+        spec:
+          display:
+            name: "Output tokens"
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last
+              format:
+                decimalPlaces: 0
+                shortValues: true
+                unit: decimal
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      sum(increase(kserve_vllm:generation_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range]))
+                      or vector(0)
+                    seriesNameFormat: "Output"
+      statTokensRate:
+        kind: Panel
+        spec:
+          display:
+            name: "Token throughput (tok/s)"
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: mean
+              format:
+                decimalPlaces: 0
+                unit: decimal
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      sum(rate(kserve_vllm:prompt_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__rate_interval]) + rate(kserve_vllm:generation_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__rate_interval]))
+                    seriesNameFormat: "Throughput"
+      statHwTotal:
+        kind: Panel
+        spec:
+          display:
+            name: "Hardware cost ($__range)"
+            description: "Window share of the annual hardware cost (wall-clock amortization)."
+          plugin:
+            kind: StatChart
+            spec:
+              calculation: last
+              format:
+                unit: usd
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      ($hw_cost_year / 31536000) * $__range_s
+                    seriesNameFormat: "Hardware cost"
+      breakdownTable:
+        kind: Panel
+        spec:
+          display:
+            name: "Cost breakdown per selected model"
+            description: "Same token mix priced for every selected API model. Fresh tokens bill at the cache-write rate where offered, else input; cached tokens at the cache-read rate where offered, else input. A 0 column means the capability is not offered. Savings vs the hardware window cost."
+          plugin:
+            kind: Table
+            spec:
+              transforms:
+                - kind: MergeIndexedColumns
+                  spec:
+                    column: pair
+                - kind: JoinByColumnValue
+                  spec:
+                    columns:
+                      - pair
+              columnSettings:
+                - hide: true
+                  name: timestamp
+                - hide: true
+                  name: name
+                - align: left
+                  enableSorting: true
+                  header: Model
+                  name: pair
+                - align: right
+                  enableSorting: true
+                  format:
+                    decimalPlaces: 2
+                    unit: usd
+                  header: Input
+                  name: "value #1"
+                - align: right
+                  enableSorting: true
+                  format:
+                    decimalPlaces: 2
+                    unit: usd
+                  header: Cache write
+                  name: "value #2"
+                - align: right
+                  enableSorting: true
+                  format:
+                    decimalPlaces: 2
+                    unit: usd
+                  header: Cache read
+                  name: "value #3"
+                - align: right
+                  enableSorting: true
+                  format:
+                    decimalPlaces: 2
+                    unit: usd
+                  header: Output
+                  name: "value #4"
+                - align: right
+                  enableSorting: true
+                  sort: asc
+                  format:
+                    decimalPlaces: 2
+                    unit: usd
+                  header: Total
+                  name: "value #5"
+                - align: right
+                  enableSorting: true
+                  format:
+                    decimalPlaces: 0
+                    unit: percent-decimal
+                  header: Savings
+                  name: "value #6"
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      sum by (pair) (
+                        (
+                          scalar(
+                            sum(increase(kserve_vllm:prompt_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range]))
+                            - (sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                            - (sum(increase(kserve_vllm:prompt_tokens_recomputed_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                            or vector(0)
+                          )
+                          * max by (pair) (
+                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
+                            unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                          )
+                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                        )
+                        + (
+                          scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                          * max by (pair) (
+                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
+                            unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                          )
+                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                        )
+                      ) / 1e6 * (1 - $discount_pct / 100)
+                    seriesNameFormat: "{{pair}}"
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      sum by (pair) (
+                        (
+                          scalar(
+                            sum(increase(kserve_vllm:prompt_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range]))
+                            - (sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                            - (sum(increase(kserve_vllm:prompt_tokens_recomputed_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                            or vector(0)
+                          )
+                          * max by (pair) (
+                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                          )
+                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                        )
+                      ) / 1e6 * (1 - $discount_pct / 100)
+                    seriesNameFormat: "{{pair}}"
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      sum by (pair) (
+                        (
+                          scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                          * max by (pair) (
+                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                          )
+                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                        )
+                      ) / 1e6 * (1 - $discount_pct / 100)
+                    seriesNameFormat: "{{pair}}"
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      sum by (pair) (
+                        scalar(sum(increase(kserve_vllm:generation_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                        * max by (pair) (
+                          rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end()
+                        )
+                      ) / 1e6 * (1 - $discount_pct / 100)
+                    seriesNameFormat: "{{pair}}"
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      sum by (pair) (
+                        (
+                          scalar(
+                            sum(increase(kserve_vllm:prompt_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range]))
+                            - (sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                            - (sum(increase(kserve_vllm:prompt_tokens_recomputed_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                            or vector(0)
+                          )
+                          * max by (pair) (
+                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                          )
+                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                        )
+                        + (
+                          scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                          * max by (pair) (
+                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                          )
+                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                        )
+                        + scalar(sum(increase(kserve_vllm:generation_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                        * max by (pair) (
+                          rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end()
+                        )
+                        + (
+                          scalar(
+                            sum(increase(kserve_vllm:prompt_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range]))
+                            - (sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                            - (sum(increase(kserve_vllm:prompt_tokens_recomputed_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                            or vector(0)
+                          )
+                          * max by (pair) (
+                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
+                            unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                          )
+                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                        )
+                        + (
+                          scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                          * max by (pair) (
+                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
+                            unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                          )
+                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                        )
+                      ) / 1e6 * (1 - $discount_pct / 100)
+                    seriesNameFormat: "{{pair}}"
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      1 - (
+                        (($hw_cost_year / 31536000) * $__range_s)
+                        / clamp_min(
+                          sum by (pair) (
+                            (
+                              scalar(
+                                sum(increase(kserve_vllm:prompt_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range]))
+                                - (sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                                - (sum(increase(kserve_vllm:prompt_tokens_recomputed_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                                or vector(0)
+                              )
+                              * max by (pair) (
+                                rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                              )
+                              or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                            )
+                            + (
+                              scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                              * max by (pair) (
+                                rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                              )
+                              or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                            )
+                            + scalar(sum(increase(kserve_vllm:generation_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                            * max by (pair) (
+                              rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end()
+                            )
+                            + (
+                              scalar(
+                                sum(increase(kserve_vllm:prompt_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range]))
+                                - (sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                                - (sum(increase(kserve_vllm:prompt_tokens_recomputed_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                                or vector(0)
+                              )
+                              * max by (pair) (
+                                rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
+                                unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                              )
+                              or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                            )
+                            + (
+                              scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
+                              * max by (pair) (
+                                rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
+                                unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                              )
+                              or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                            )
+                          ) / 1e6 * (1 - $discount_pct / 100),
+                          0.000000001
+                        )
+                      )
+                    seriesNameFormat: "{{pair}}"
+      spendOverTime:
+        kind: Panel
+        spec:
+          display:
+            name: "Spend rate ($/h): hardware vs API equivalent"
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0
+                connectNulls: false
+                display: line
+                lineWidth: 1.5
+              yAxis:
+                format:
+                  unit: usd
+                min: 0
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      $hw_cost_year / 8760
+                    seriesNameFormat: "Hardware"
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: cluster-prometheus-datasource
+                    query: |
+                      sum by (pair) (
+                        scalar(
+                          sum(rate(kserve_vllm:prompt_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__rate_interval]))
+                          - (sum(rate(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__rate_interval])) or vector(0))
+                          - (sum(rate(kserve_vllm:prompt_tokens_recomputed_total{namespace=~"$namespace", model_name=~"$model_name"}[$__rate_interval])) or vector(0))
+                          or vector(0)
+                        )
+                        * max by (pair) (
+                          rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                          or on (provider, model, context, tier) rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
+                        )
+                        + scalar(sum(rate(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__rate_interval])) or vector(0))
+                        * max by (pair) (
+                          rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                          or on (provider, model, context, tier) rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
+                        )
+                        + scalar(sum(rate(kserve_vllm:generation_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__rate_interval])) or vector(0))
+                        * max by (pair) (
+                          rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end()
+                        )
+                      ) / 1e6 * 3600 * (1 - $discount_pct / 100)
+                    seriesNameFormat: "{{pair}}"
+      pricingNotes:
+        kind: Panel
+        spec:
+          display:
+            name: "Data sources"
+          plugin:
+            kind: Markdown
+            spec:
+              text: |
+                **Prices as of 2026-11-12.** Sources: docs.claude.com/en/docs/about-claude/pricing, platform.openai.com/docs/pricing.
+      comparisonCaveats:
+        kind: Panel
+        spec:
+          display:
+            name: "Comparison caveats"
+          plugin:
+            kind: Markdown
+            spec:
+              text: |
+                **Comparison caveats — read before quoting these numbers**
+
+                Token counts depend on the tokenizer used by the selected model in vLLM on OpenShift AI. Tokenizers produce different counts for the same text (commonly ±10–30%), so every column scales with that unknown delta.
+
+                - **Output mix:** some OpenAI models bill reasoning tokens as output; the Output figure here is the generation count reported by vLLM, not a like-for-like output volume.
+                - **Cache ratio is workload-specific:** the read:write split shown is the serving stack's KV-cache behavior. Provider TTLs (Anthropic 5m/1h, OpenAI 30m), machine routing, and breakpoint policies differ — the same workload may cache differently there.
+                - **Context tier is applied globally:** OpenAI long-context pricing actually applies per request above 272K input tokens, so the short-context tier understates and the long-context tier overstates the bill whenever the workload straddles that boundary.
+                - **Discount:** use the Provider discount (%) variable to model negotiated/volume discounts and cost increases or decreases; Batch/Flex (−50%), fast mode (2x), and data-residency/FedRAMP uplift (+10%) are not modeled.
+                - **Cache minimums:** prefixes below ~1–4K tokens don't cache on either provider — negligible at this scale, slightly lowers effective hit rate.

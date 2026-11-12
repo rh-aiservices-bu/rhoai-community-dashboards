@@ -404,18 +404,18 @@ spec:
                             or vector(0)
                           )
                           * max by (pair) (
-                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
-                            unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                            (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())
+                            unless on (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context="short"} @ end())
                           )
-                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                          or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                         )
                         + (
                           scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
                           * max by (pair) (
-                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
-                            unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                            (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())
+                            unless on (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context="short"} @ end())
                           )
-                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                          or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                         )
                       ) / 1e6 * (1 - $discount_pct / 100)
                     seriesNameFormat: "{{pair}}"
@@ -437,9 +437,9 @@ spec:
                             or vector(0)
                           )
                           * max by (pair) (
-                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                            (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context="short"} @ end())
                           )
-                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                          or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                         )
                       ) / 1e6 * (1 - $discount_pct / 100)
                     seriesNameFormat: "{{pair}}"
@@ -456,9 +456,9 @@ spec:
                         (
                           scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
                           * max by (pair) (
-                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                            (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context="short"} @ end())
                           )
-                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                          or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                         )
                       ) / 1e6 * (1 - $discount_pct / 100)
                     seriesNameFormat: "{{pair}}"
@@ -474,7 +474,7 @@ spec:
                       sum by (pair) (
                         scalar(sum(increase(kserve_vllm:generation_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
                         * max by (pair) (
-                          rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end()
+                          (rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context="short"} @ end())
                         )
                       ) / 1e6 * (1 - $discount_pct / 100)
                     seriesNameFormat: "{{pair}}"
@@ -496,20 +496,20 @@ spec:
                             or vector(0)
                           )
                           * max by (pair) (
-                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                            (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context="short"} @ end())
                           )
-                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                          or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                         )
                         + (
                           scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
                           * max by (pair) (
-                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                            (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context="short"} @ end())
                           )
-                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                          or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                         )
                         + scalar(sum(increase(kserve_vllm:generation_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
                         * max by (pair) (
-                          rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end()
+                          (rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context="short"} @ end())
                         )
                         + (
                           scalar(
@@ -519,18 +519,18 @@ spec:
                             or vector(0)
                           )
                           * max by (pair) (
-                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
-                            unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                            (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())
+                            unless on (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context="short"} @ end())
                           )
-                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                          or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                         )
                         + (
                           scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
                           * max by (pair) (
-                            rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
-                            unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                            (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())
+                            unless on (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context="short"} @ end())
                           )
-                          or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                          or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                         )
                       ) / 1e6 * (1 - $discount_pct / 100)
                     seriesNameFormat: "{{pair}}"
@@ -555,20 +555,20 @@ spec:
                                 or vector(0)
                               )
                               * max by (pair) (
-                                rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                                (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context="short"} @ end())
                               )
-                              or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                              or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                             )
                             + (
                               scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
                               * max by (pair) (
-                                rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                                (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context="short"} @ end())
                               )
-                              or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                              or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                             )
                             + scalar(sum(increase(kserve_vllm:generation_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
                             * max by (pair) (
-                              rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end()
+                              (rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context="short"} @ end())
                             )
                             + (
                               scalar(
@@ -578,18 +578,18 @@ spec:
                                 or vector(0)
                               )
                               * max by (pair) (
-                                rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
-                                unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
+                                (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())
+                                unless on (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context="short"} @ end())
                               )
-                              or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                              or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                             )
                             + (
                               scalar(sum(increase(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__range])) or vector(0))
                               * max by (pair) (
-                                rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
-                                unless on (pair) rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
+                                (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())
+                                unless on (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context="short"} @ end())
                               )
-                              or max by (pair) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()) * 0
+                              or max by (pair) ((rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())) * 0
                             )
                           ) / 1e6 * (1 - $discount_pct / 100),
                           0.000000001
@@ -645,17 +645,17 @@ spec:
                           or vector(0)
                         )
                         * max by (pair) (
-                          rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end()
-                          or on (provider, model, context, tier) rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
+                          (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_write", context="short"} @ end())
+                          or on (provider, model, context, tier) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())
                         )
                         + scalar(sum(rate(kserve_vllm:prompt_tokens_cached_total{namespace=~"$namespace", model_name=~"$model_name"}[$__rate_interval])) or vector(0))
                         * max by (pair) (
-                          rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end()
-                          or on (provider, model, context, tier) rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end()
+                          (rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="cache_read", context="short"} @ end())
+                          or on (provider, model, context, tier) (rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="input", context="short"} @ end())
                         )
                         + scalar(sum(rate(kserve_vllm:generation_tokens_total{namespace=~"$namespace", model_name=~"$model_name"}[$__rate_interval])) or vector(0))
                         * max by (pair) (
-                          rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end()
+                          (rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context=~"$context|any"} @ end() or rhai_api_pricing_mtok{pair=~"$api_model", token_type="output", context="short"} @ end())
                         )
                       ) / 1e6 * 3600 * (1 - $discount_pct / 100)
                     seriesNameFormat: "{{pair}}"
@@ -685,6 +685,6 @@ spec:
                 - **Output mix:** some OpenAI models bill reasoning tokens as output; the Output figure here is the generation count reported by vLLM, not a like-for-like output volume.
                 - **Cache ratio is workload-specific:** the read:write split shown is the serving stack's KV-cache behavior. Provider TTLs (Anthropic 5m/1h, OpenAI 30m), machine routing, and breakpoint policies differ — the same workload may cache differently there.
                 - **Context tier is applied globally:** OpenAI long-context pricing actually applies per request above 272K input tokens, so the short-context tier understates and the long-context tier overstates the bill whenever the workload straddles that boundary.
-                - **haiku-5.5 tiers at a lower threshold:** the single Context tier selector prices every tiered model at the same tier, but OpenAI models split at 272K input tokens while haiku-5.5 splits at 100K. With the default Short selection, haiku-5.5 prompts over 100K input tokens are priced at the short rates, so the 100–272K haiku-5.5 band reads as a lower bound. For long-context haiku-5.5 analysis, select Long and restrict the API model selection to Anthropic models, because Long also applies OpenAI long-context rates where the model has them.
+                - **haiku-5.5 tiers at a lower threshold:** the single Context tier selector prices every tiered model at the same tier, but OpenAI models split at 272K input tokens while haiku-5.5 splits at 100K. With the default Short selection, haiku-5.5 prompts over 100K input tokens are priced at the short rates, so the 100–272K haiku-5.5 band reads as a lower bound. For long-context haiku-5.5 analysis, select Long and restrict the API model selection to Anthropic models: under Long, models without a long-context tier keep the rate shown under Short (so nothing drops out of the panels), while tiered OpenAI models are billed at their long-context rates, which would skew a haiku-5.5-only comparison.
                 - **Discount:** use the Provider discount (%) variable to model negotiated/volume discounts and cost increases or decreases; Batch/Flex (−50%), fast mode (2x), and data-residency/FedRAMP uplift (+10%) are not modeled.
                 - **Cache minimums:** prefixes below ~1–4K tokens don't cache on either provider — negligible at this scale, slightly lowers effective hit rate.

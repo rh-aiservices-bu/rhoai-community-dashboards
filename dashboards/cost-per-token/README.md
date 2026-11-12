@@ -84,8 +84,10 @@ oc delete -f dashboards/cost-per-token/rules/pricing-rule.yaml
   selection, haiku-5.5 prompts over 100K input tokens are priced at the short
   rates, so the 100–272K haiku-5.5 band reads as a lower bound; for
   long-context haiku-5.5 analysis, select Long and restrict the API model
-  selection to Anthropic models, because Long also applies OpenAI
-  long-context rates where the model has them.
+  selection to Anthropic models. Under Long, models without a long-context
+  tier keep the rate shown under Short, so nothing drops out of the panels, but
+  tiered OpenAI models are billed at their long-context rates, which would
+  skew a haiku-5.5-only comparison.
 - **Older serving images over-report fresh input.** Serving images with vLLM
   older than v0.16 (for example RHAIS 3.3.x-based ones) lack the cached and
   recomputed token metrics, so the Fresh-input stat counts cached and

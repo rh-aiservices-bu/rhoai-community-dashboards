@@ -79,13 +79,13 @@ spec:
           defaultValue: short
           display:
             name: "API context tier"
-            description: "OpenAI long-context pricing applies above 272K input tokens; Anthropic pricing is context-independent."
+            description: "Pricing tier for context-dependent models. OpenAI tiers split at 272K input tokens; haiku-5.5 splits at 100K input tokens. All other Anthropic models are context-independent and price the same in either tier."
           plugin:
             kind: StaticListVariable
             spec:
               values:
-                - {label: "Short (<=272K input)", value: short}
-                - {label: "Long (>272K input)", value: long}
+                - {label: "Short (<=272K input; haiku-5.5 <=100K)", value: short}
+                - {label: "Long (>272K input; haiku-5.5 >100K)", value: long}
       - kind: TextVariable
         spec:
           name: discount_pct
@@ -685,5 +685,6 @@ spec:
                 - **Output mix:** some OpenAI models bill reasoning tokens as output; the Output figure here is the generation count reported by vLLM, not a like-for-like output volume.
                 - **Cache ratio is workload-specific:** the read:write split shown is the serving stack's KV-cache behavior. Provider TTLs (Anthropic 5m/1h, OpenAI 30m), machine routing, and breakpoint policies differ — the same workload may cache differently there.
                 - **Context tier is applied globally:** OpenAI long-context pricing actually applies per request above 272K input tokens, so the short-context tier understates and the long-context tier overstates the bill whenever the workload straddles that boundary.
+                - **haiku-5.5 tiers at a lower threshold:** the single Context tier selector prices every tiered model at the same tier, but OpenAI models split at 272K input tokens while haiku-5.5 splits at 100K. With the default Short selection, haiku-5.5 prompts over 100K input tokens are priced at the short rates, so the 100–272K haiku-5.5 band reads as a lower bound. For long-context haiku-5.5 analysis, select Long and restrict the API model selection to Anthropic models, because Long also applies OpenAI long-context rates where the model has them.
                 - **Discount:** use the Provider discount (%) variable to model negotiated/volume discounts and cost increases or decreases; Batch/Flex (−50%), fast mode (2x), and data-residency/FedRAMP uplift (+10%) are not modeled.
                 - **Cache minimums:** prefixes below ~1–4K tokens don't cache on either provider — negligible at this scale, slightly lowers effective hit rate.

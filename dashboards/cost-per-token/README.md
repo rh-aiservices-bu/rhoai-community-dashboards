@@ -78,6 +78,14 @@ oc delete -f dashboards/cost-per-token/rules/pricing-rule.yaml
   the console hides it from users without the `cluster-monitoring-view` role.
 - **API prices are snapshot list prices.** The rule header records the as-of
   date; gpt-5.6-sol pricing is promotional and noted in the rule.
+- **One tier selector covers two thresholds.** The API context tier selector
+  prices every tiered model at the same tier, but OpenAI models split at 272K
+  input tokens while haiku-5.5 splits at 100K. With the default Short
+  selection, haiku-5.5 prompts over 100K input tokens are priced at the short
+  rates, so the 100–272K haiku-5.5 band reads as a lower bound; for
+  long-context haiku-5.5 analysis, select Long and restrict the API model
+  selection to Anthropic models, because Long also applies OpenAI
+  long-context rates where the model has them.
 - **Older serving images over-report fresh input.** Serving images with vLLM
   older than v0.16 (for example RHAIS 3.3.x-based ones) lack the cached and
   recomputed token metrics, so the Fresh-input stat counts cached and

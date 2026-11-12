@@ -28,6 +28,18 @@ of running the same load yourself.
 | **Metric(s)** | `kserve_vllm:prompt_tokens_total`, `kserve_vllm:prompt_tokens_cached_total`, `kserve_vllm:prompt_tokens_recomputed_total`, `kserve_vllm:generation_tokens_total`, `kserve_vllm:num_requests_running`, exported by the RHOAI/KServe monitoring stack, plus `rhai_api_pricing_mtok`, recorded by the companion `rules/pricing-rule.yaml` shipped in this directory. The API-comparison panels are empty without that rule. |
 | **Label(s)** | `namespace` and `model_name` on the vLLM metrics; `pair`, `token_type`, and `context` on the pricing series. |
 
+These metrics are collected automatically from vLLM deployments: the
+KServe/RHOAI monitoring stack scrapes the vLLM engine's own metrics and
+exposes them as the `kserve_vllm:*` series above, so no configuration is
+needed for collection. The cached and recomputed prompt token metrics the
+cost math depends on require a serving image with vLLM v0.16 or later; Red
+Hat AI Inference Server 3.3.x images do not export that family, while Red
+Hat AI Inference 3.4.0-ea.2 and later, including the 3.5 and 3.6
+releases, do (see the [Red Hat AI Inference 3.5.0 release
+notes](https://docs.redhat.com/en/documentation/red_hat_ai_inference/3.5/html/release_notes/rhaii-350-ga-release-notes_release-notes)).
+Check the version badge on the model server or serving runtime in the
+OpenShift AI UI to confirm which vLLM version a serving image carries.
+
 ## Deploy
 
 ```bash
@@ -66,3 +78,13 @@ oc delete -f dashboards/cost-per-token/rules/pricing-rule.yaml
   the console hides it from users without the `cluster-monitoring-view` role.
 - **API prices are snapshot list prices.** The rule header records the as-of
   date; gpt-5.6-sol pricing is promotional and noted in the rule.
+- **Older serving images over-report fresh input.** Serving images with vLLM
+  older than v0.16 (for example RHAIS 3.3.x-based ones) lack the cached and
+  recomputed token metrics, so the Fresh-input stat counts cached and
+  recomputed tokens as fresh input and the cache-read panels stay empty; the
+  panels do not error. If cost numbers look too high, check the serving
+  image's vLLM version via the version badge in the OpenShift AI UI. The
+  `--enable-prompt-tokens-details` and `--enable-force-include-usage` flags
+  are unrelated to these dashboard metrics; they only affect OpenAI API usage
+  reporting and are optional (add them under Configuration parameters →
+  Additional serving runtime arguments on RHOAI 3.5-era runtimes).

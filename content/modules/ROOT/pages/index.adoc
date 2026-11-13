@@ -6,7 +6,7 @@ Community-maintained Perses and Grafana dashboards for {rhoai}, kept in Git and 
 * Built on the datasource that ships with the {rhoai-short} Monitoring Stack, so there is nothing extra to deploy
 * One deployment path for all dashboards: no Helm for one and Kustomize for the next
 
-IMPORTANT: Dashboards in this repository use the out-of-the-box datasource supplied by the {rhoai-short} Monitoring Stack (`{perses-ds}`). That single constraint is what makes them portable: a dashboard here works on any cluster with the Monitoring Stack enabled, with no exporters, recording rules, or datasource wiring to set up first. Dashboards that need more than that are still welcome: they are linked from the xref:custom-dashboards.adoc#_dashboard_register[dashboard register] and maintained by their authors.
+IMPORTANT: Dashboards in this repository use the out-of-the-box datasource supplied by the {rhoai-short} Monitoring Stack (`{perses-ds}`). That single constraint is what makes them portable: a dashboard here works on any cluster with the Monitoring Stack enabled, with no exporters, recording rules, or datasource wiring to set up first. Dashboards that need more than that are still welcome: they are linked from the xref:dashboard-register.adoc[dashboard register] and maintained by their authors.
 
 == Why RHOAI Community Dashboards
 
@@ -25,6 +25,9 @@ Keeping those answers in Git rather than clicking them together in a UI means th
 
 | xref:repository-structure.adoc[Repository Structure]
 | The directory layout, what each dashboard directory must contain, and what CI checks
+
+| xref:dashboard-register.adoc[Dashboard Register]
+| Dashboards that live outside this repository: why, and how they are tracked
 
 | xref:deploy-perses.adoc[Deploy a Perses Dashboard]
 | Verifying the Monitoring Stack, applying a `PersesDashboard`, and the namespace and YAML traps that cost the most time

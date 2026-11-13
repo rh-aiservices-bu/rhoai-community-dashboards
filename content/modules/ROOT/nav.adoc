@@ -3,6 +3,7 @@
 .Concepts
 * xref:custom-dashboards.adoc[Custom Dashboards]
 * xref:repository-structure.adoc[Repository Structure]
+* xref:dashboard-register.adoc[Dashboard Register]
 
 .Deploying
 * xref:deploy-perses.adoc[Deploy a Perses Dashboard]

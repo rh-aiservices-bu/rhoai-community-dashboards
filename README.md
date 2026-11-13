@@ -13,6 +13,7 @@ Contributions include Perses and Grafana dashboards or entries in the [dashboard
 | [Repository Structure](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/repository-structure.html) | Directory layout, the dashboard directory contract, what CI checks |
 | [Deploy a Perses Dashboard](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/deploy-perses.html) | Verifying the Monitoring Stack, applying a `PersesDashboard`, troubleshooting |
 | [The RHOAI Monitoring Stack](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/rhoai-monitoring.html) | What the platform deploys and where dashboard data comes from |
+| [Dashboard Register](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/dashboard-register.html) | Dashboards that live outside this repository, and how to add an entry |
 | [Contribution Guide](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/contributing.html) | Scope, workflow, the README each dashboard needs, review gates |
 
 ## What is a custom dashboard?
@@ -53,6 +54,8 @@ Dashboard contributions can target either tool. Equivalent versions for both are
 The [dashboard register](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/tree/main/dashboards#dashboard-register) is an index of dashboards that live in their own repositories rather than in this tree. 
 
 Some dashboards ship as part of a larger application, where the dashboard and the exporter that feeds it are versioned together and would drift if copied here. This register points to those, so they can be found alongside the dashboards held directly in this repository.
+
+See [Dashboard Register](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/dashboard-register.html) in the full documentation for how to add an entry.
 
 ## Contributing
 

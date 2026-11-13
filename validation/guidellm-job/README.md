@@ -10,13 +10,17 @@ image build required.
 
 ```
 base/                               Job + default (placeholder) config - do not edit per-run
-overlays/chat-latency/              short prompt/output, modest concurrency
-overlays/long-context-summarization/ long prompt, short output, low concurrency
-overlays/high-concurrency-stress/   moderate tokens, high concurrency (drives queueing)
+overlays/chat-latency/              512 prompt / 200 output tokens, concurrency 8
+overlays/long-context-summarization/ 4096 prompt / 300 output tokens, concurrency 4
+overlays/high-concurrency-stress/   256 prompt / 128 output tokens, concurrency 64
 ```
 
 Each overlay is a starting point, not a fixed menu - copy one and adjust its
-`run.env` for your own workload.
+`run.env` for your own workload. The token counts above are approximations of
+real-world traffic patterns (chat, RAG/summarization, and a throughput stress
+test respectively) backed by public benchmark data - see each overlay's
+`run.env` comments for sources. **Check your target model's context window
+before using `long-context-summarization`** - see the warning below.
 
 ## Configuring a run
 
@@ -70,3 +74,10 @@ oc delete job guidellm-run
 ## Notes
 
 - The dashboards read live metrics from the vLLM engine via Prometheus, not from GuideLLM's own report - this Job doesn't need to produce anything for them to work. GuideLLM's full JSON report is still printed to stdout at the end of the run (after the human-readable summary) purely for anyone who wants to inspect the raw numbers.
+- **Check the target model's context window before running `long-context-summarization`** (4096 prompt + 300 output tokens by default). Many small open-weight models cap out at 4096 or 8192 total tokens, and `BENCH_PROMPT_TOKENS + BENCH_OUTPUT_TOKENS` must stay under that or requests will fail or get truncated. Find the real limit with:
+
+  ```bash
+  curl -ks <target>/v1/models | jq '.data[].max_model_len'
+  ```
+
+  then lower `BENCH_PROMPT_TOKENS` in `run.env` to comfortably fit, leaving room for `BENCH_OUTPUT_TOKENS`.

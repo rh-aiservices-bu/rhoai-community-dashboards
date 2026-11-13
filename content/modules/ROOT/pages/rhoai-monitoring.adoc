@@ -117,7 +117,7 @@ Pushing traces is unauthenticated and governed by NetworkPolicy. Every workload 
 
 There is no out-of-the-box log collection. {rhoai-short} documentation recommends the Cluster Logging Operator where log retention is needed, which stores logs in Loki and can forward to CloudWatch, Elasticsearch, Kafka and Splunk. Out-of-the-box integration is future work.
 
-This has a direct consequence for dashboards here: *Perses does not support logs yet*. A dashboard in this repository can query metrics and traces. If a view genuinely needs log data, it is not a Perses dashboard, and it probably belongs in the xref:custom-dashboards.adoc#_dashboard_register[register].
+This has a direct consequence for dashboards here: *Perses does not support logs yet*. A dashboard in this repository can query metrics and traces. If a view genuinely needs log data, it is not a Perses dashboard, and it probably belongs in the xref:dashboard-register.adoc[register].
 
 == Dashboards
 

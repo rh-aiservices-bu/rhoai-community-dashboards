@@ -29,7 +29,7 @@ rhoai-community-dashboards/
 └── .skills/                           <8>
 ----
 <1> Short introduction and links to this documentation site. Not the place for reference material.
-<2> The xref:custom-dashboards.adoc#_dashboard_register[dashboard register], listing dashboards that live in other repositories.
+<2> The xref:dashboard-register.adoc[dashboard register], listing dashboards that live in other repositories.
 <3> One directory per dashboard. The contract is below.
 <4> Checks that the Monitoring Stack is deployed and ready. It validates; it never installs.
 <5> Expected resource shapes: `DSCInitialization`, Grafana CRs, datasources. Product changes are absorbed here, not in the script.

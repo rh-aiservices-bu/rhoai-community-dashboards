@@ -91,11 +91,3 @@ That is a deliberate decision, because converting between them is lossy in one d
 A faithful Grafana port therefore often has to be redesigned rather than translated: split one dual-axis panel into two, or replace a bar gauge with a time series. That redesign is a judgement call belonging to whoever writes the dashboard, which is exactly why automated parity checking is not attempted.
 
 TIP: If a dashboard only works well in Grafana, contribute the Grafana version alone and say so in its README. A good dashboard in one format beats a degraded pair.
-
-== Dashboard register
-
-Some dashboards cannot use the out-of-the-box datasource. A dashboard shipped alongside the operator that exports the metrics it reads is versioned with that operator and would drift the moment it was copied here. One that joins several datasources is not portable to a cluster that has only the Monitoring Stack.
-
-Those are listed in the link:{repo-url}/tree/main/dashboards#dashboard-register[dashboard register] instead: a table pointing at the repository that owns the dashboard, recording the format, the required data, and the maintainer. Entries meet the same hygiene bar as anything else here (no credentials, no customer identifiers, no internal endpoints, required metrics documented), but their authors keep maintaining them.
-
-The split is about ownership, not quality. A register entry says "this exists, it is good, and it is not ours to maintain".

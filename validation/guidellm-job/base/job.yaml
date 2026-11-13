@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: guidellm-run
+  labels:
+    app.kubernetes.io/name: guidellm
+    app.kubernetes.io/component: load-generator
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: guidellm
+        app.kubernetes.io/component: load-generator
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: guidellm
+          image: ghcr.io/vllm-project/guidellm:v0.8.1
+          # Entrypoint is replaced (rather than just passing args) so the API
+          # key can be added to --backend only when BENCH_API_KEY is set -
+          # GuideLLM has no separate flag/env var for it, it's a sub-key of
+          # the --backend option string. Config vars are named BENCH_* rather
+          # than GUIDELLM_* because GuideLLM's own settings loader scans every
+          # GUIDELLM_*-prefixed env var and warns on ones it doesn't own.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -euo pipefail
+              backend="kind=openai_http,target=${BENCH_TARGET},model=${BENCH_MODEL},verify=${BENCH_VERIFY_TLS}"
+              if [ -n "${BENCH_API_KEY:-}" ]; then
+                backend="${backend},api_key=${BENCH_API_KEY}"
+              fi
+              # Not `exec`'d: the JSON report is cat'd to stdout below so the
+              # full result is visible via `oc logs` without needing a PVC or
+              # `oc cp` (the Job/pod are left in place after completion, so
+              # the container filesystem wouldn't survive a later `oc cp`
+              # anyway once it's garbage collected).
+              guidellm run \
+                --backend "${backend}" \
+                --tokenizer "kind=huggingface_auto,model=${BENCH_TOKENIZER}" \
+                --data "kind=synthetic_text,prompt_tokens=${BENCH_PROMPT_TOKENS},output_tokens=${BENCH_OUTPUT_TOKENS}" \
+                --profile "kind=concurrent,streams=${BENCH_CONCURRENCY}" \
+                --constraint "kind=max_requests,count=${BENCH_MAX_REQUESTS}" \
+                --constraint "kind=max_duration,seconds=${BENCH_MAX_DURATION_SECONDS}"
+              echo
+              echo "===== Raw GuideLLM JSON report (/results/benchmarks.json) ====="
+              cat /results/benchmarks.json
+          envFrom:
+            - configMapRef:
+                name: guidellm-config
+          env:
+            - name: BENCH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: guidellm-api-key
+                  key: BENCH_API_KEY
+                  optional: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi

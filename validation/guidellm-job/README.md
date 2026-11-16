@@ -6,6 +6,8 @@ so the community dashboards in `dashboards/` have live metrics to visualise.
 Uses the upstream `ghcr.io/vllm-project/guidellm` image unmodified - no custom
 image build required.
 
+> **Note:** This currently has not been checked against a disconnected environment. See [#29](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/issues/29) for details.
+
 ## Layout
 
 ```

@@ -27,6 +27,8 @@ Dashboards need live traffic to show meaningful data. [`validation/guidellm-job`
 
 It ships as a Kustomize base plus a few example overlays (chat-like traffic, long-context/summarization, and high-concurrency stress) that you can copy and point at your own endpoint.
 
+> **Note:** This currently has not been checked against a disconnected environment. See [#29](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/issues/29) for details.
+
 ## Contributing
 
 Submit a pull request containing the dashboard files or application source code and a short README with:

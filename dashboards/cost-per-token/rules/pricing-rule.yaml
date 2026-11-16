@@ -1,0 +1,263 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: api-pricing-table
+  namespace: redhat-ods-monitoring
+  labels:
+    openshift.io/prometheus-rule-evaluation-scope: leaf-prometheus
+spec:
+  groups:
+    - name: api-pricing-table
+      rules:
+        # Constant price series consumed by the [C] - Cost per Token Perses
+        # dashboard (dashboard-99-cost-per-token-admin).
+        # Materialized here (instead of hardcoding prices in dashboard PromQL)
+        # so the `pair` label (provider/model) drives the dashboard's single
+        # API-model dropdown.
+        # Tested against OCP 4.22 / RHOAI 3.5. The rule ships into
+        # redhat-ods-monitoring, which carries
+        # openshift.io/cluster-monitoring=true, so the platform Prometheus
+        # evaluates it and the recorded series flow to the central Thanos
+        # Querier, which the dashboard's `cluster-prometheus-datasource`
+        # queries. Clusters preferring user-workload evaluation may instead
+        # apply the rule to a UWM-scraped workload namespace, where UWM's
+        # enforcedNamespaceLabel adds a `namespace` label to every pricing
+        # series.
+        #
+        # token_type normalization across providers:
+        #   input, output, cache_read, cache_write (5m TTL), cache_write_1h
+        # context: "any" for Anthropic (except haiku-5.5, which uses
+        #          prompt-length pricing); "short" / "long" for OpenAI
+        #          (<=272K input) and haiku-5.5 (<=100K / >100K input).
+        # A capability the provider does not offer for a model (shown as "-"
+        # on their pricing page) gets no series at all; the dashboard falls
+        # back to the input price for cache reads on such models.
+        #
+        # Prices as of 2026-11-12
+        # Sources: https://docs.claude.com/en/docs/about-claude/pricing
+        #          https://platform.openai.com/docs/pricing
+        # gpt-5.6-sol pricing is promotional until 2026-11-30; re-check at the
+        # next refresh.
+        # Refresh: edit the rows between the BEGIN/END markers and re-apply
+        # this file.
+        # --- BEGIN PRICING TABLE ---
+
+        # Anthropic
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: fable-5.1, pair: anthropic/fable-5.1, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(50)", labels: {provider: anthropic, model: fable-5.1, pair: anthropic/fable-5.1, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.25)", labels: {provider: anthropic, model: fable-5.1, pair: anthropic/fable-5.1, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(12.50)", labels: {provider: anthropic, model: fable-5.1, pair: anthropic/fable-5.1, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(20)", labels: {provider: anthropic, model: fable-5.1, pair: anthropic/fable-5.1, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(8)", labels: {provider: anthropic, model: fable-5.2, pair: anthropic/fable-5.2, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(40)", labels: {provider: anthropic, model: fable-5.2, pair: anthropic/fable-5.2, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: anthropic, model: fable-5.2, pair: anthropic/fable-5.2, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: fable-5.2, pair: anthropic/fable-5.2, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(16)", labels: {provider: anthropic, model: fable-5.2, pair: anthropic/fable-5.2, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: mythos-5.1, pair: anthropic/mythos-5.1, tier: limited, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(50)", labels: {provider: anthropic, model: mythos-5.1, pair: anthropic/mythos-5.1, tier: limited, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.25)", labels: {provider: anthropic, model: mythos-5.1, pair: anthropic/mythos-5.1, tier: limited, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(12.50)", labels: {provider: anthropic, model: mythos-5.1, pair: anthropic/mythos-5.1, tier: limited, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(20)", labels: {provider: anthropic, model: mythos-5.1, pair: anthropic/mythos-5.1, tier: limited, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(8)", labels: {provider: anthropic, model: mythos-5.2, pair: anthropic/mythos-5.2, tier: limited, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(40)", labels: {provider: anthropic, model: mythos-5.2, pair: anthropic/mythos-5.2, tier: limited, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: anthropic, model: mythos-5.2, pair: anthropic/mythos-5.2, tier: limited, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: mythos-5.2, pair: anthropic/mythos-5.2, tier: limited, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(16)", labels: {provider: anthropic, model: mythos-5.2, pair: anthropic/mythos-5.2, tier: limited, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: fable-5, pair: anthropic/fable-5, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(50)", labels: {provider: anthropic, model: fable-5, pair: anthropic/fable-5, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1)", labels: {provider: anthropic, model: fable-5, pair: anthropic/fable-5, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(12.50)", labels: {provider: anthropic, model: fable-5, pair: anthropic/fable-5, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(20)", labels: {provider: anthropic, model: fable-5, pair: anthropic/fable-5, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: mythos-5, pair: anthropic/mythos-5, tier: limited, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(50)", labels: {provider: anthropic, model: mythos-5, pair: anthropic/mythos-5, tier: limited, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1)", labels: {provider: anthropic, model: mythos-5, pair: anthropic/mythos-5, tier: limited, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(12.50)", labels: {provider: anthropic, model: mythos-5, pair: anthropic/mythos-5, tier: limited, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(20)", labels: {provider: anthropic, model: mythos-5, pair: anthropic/mythos-5, tier: limited, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(4)", labels: {provider: anthropic, model: opus-5.5, pair: anthropic/opus-5.5, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(20)", labels: {provider: anthropic, model: opus-5.5, pair: anthropic/opus-5.5, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: anthropic, model: opus-5.5, pair: anthropic/opus-5.5, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: anthropic, model: opus-5.5, pair: anthropic/opus-5.5, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(8)", labels: {provider: anthropic, model: opus-5.5, pair: anthropic/opus-5.5, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: anthropic, model: opus-5, pair: anthropic/opus-5, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(25)", labels: {provider: anthropic, model: opus-5, pair: anthropic/opus-5, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: anthropic, model: opus-5, pair: anthropic/opus-5, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(6.25)", labels: {provider: anthropic, model: opus-5, pair: anthropic/opus-5, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: opus-5, pair: anthropic/opus-5, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: anthropic, model: opus-4.7, pair: anthropic/opus-4.7, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(25)", labels: {provider: anthropic, model: opus-4.7, pair: anthropic/opus-4.7, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: anthropic, model: opus-4.7, pair: anthropic/opus-4.7, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(6.25)", labels: {provider: anthropic, model: opus-4.7, pair: anthropic/opus-4.7, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: opus-4.7, pair: anthropic/opus-4.7, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: anthropic, model: opus-4.6, pair: anthropic/opus-4.6, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(25)", labels: {provider: anthropic, model: opus-4.6, pair: anthropic/opus-4.6, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: anthropic, model: opus-4.6, pair: anthropic/opus-4.6, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(6.25)", labels: {provider: anthropic, model: opus-4.6, pair: anthropic/opus-4.6, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: opus-4.6, pair: anthropic/opus-4.6, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: anthropic, model: opus-4.8, pair: anthropic/opus-4.8, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(25)", labels: {provider: anthropic, model: opus-4.8, pair: anthropic/opus-4.8, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: anthropic, model: opus-4.8, pair: anthropic/opus-4.8, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(6.25)", labels: {provider: anthropic, model: opus-4.8, pair: anthropic/opus-4.8, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: opus-4.8, pair: anthropic/opus-4.8, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: anthropic, model: opus-4.5, pair: anthropic/opus-4.5, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(25)", labels: {provider: anthropic, model: opus-4.5, pair: anthropic/opus-4.5, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: anthropic, model: opus-4.5, pair: anthropic/opus-4.5, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(6.25)", labels: {provider: anthropic, model: opus-4.5, pair: anthropic/opus-4.5, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: opus-4.5, pair: anthropic/opus-4.5, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2)", labels: {provider: anthropic, model: sonnet-5.5, pair: anthropic/sonnet-5.5, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: sonnet-5.5, pair: anthropic/sonnet-5.5, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.10)", labels: {provider: anthropic, model: sonnet-5.5, pair: anthropic/sonnet-5.5, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2.50)", labels: {provider: anthropic, model: sonnet-5.5, pair: anthropic/sonnet-5.5, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(4)", labels: {provider: anthropic, model: sonnet-5.5, pair: anthropic/sonnet-5.5, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2)", labels: {provider: anthropic, model: sonnet-5, pair: anthropic/sonnet-5, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: anthropic, model: sonnet-5, pair: anthropic/sonnet-5, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: anthropic, model: sonnet-5, pair: anthropic/sonnet-5, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2.50)", labels: {provider: anthropic, model: sonnet-5, pair: anthropic/sonnet-5, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(4)", labels: {provider: anthropic, model: sonnet-5, pair: anthropic/sonnet-5, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(3)", labels: {provider: anthropic, model: sonnet-4.6, pair: anthropic/sonnet-4.6, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(15)", labels: {provider: anthropic, model: sonnet-4.6, pair: anthropic/sonnet-4.6, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.30)", labels: {provider: anthropic, model: sonnet-4.6, pair: anthropic/sonnet-4.6, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(3.75)", labels: {provider: anthropic, model: sonnet-4.6, pair: anthropic/sonnet-4.6, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(6)", labels: {provider: anthropic, model: sonnet-4.6, pair: anthropic/sonnet-4.6, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(3)", labels: {provider: anthropic, model: sonnet-4.5, pair: anthropic/sonnet-4.5, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(15)", labels: {provider: anthropic, model: sonnet-4.5, pair: anthropic/sonnet-4.5, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.30)", labels: {provider: anthropic, model: sonnet-4.5, pair: anthropic/sonnet-4.5, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(3.75)", labels: {provider: anthropic, model: sonnet-4.5, pair: anthropic/sonnet-4.5, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(6)", labels: {provider: anthropic, model: sonnet-4.5, pair: anthropic/sonnet-4.5, tier: standard, context: any, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.10)", labels: {provider: anthropic, model: haiku-5.5, pair: anthropic/haiku-5.5, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: anthropic, model: haiku-5.5, pair: anthropic/haiku-5.5, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.01)", labels: {provider: anthropic, model: haiku-5.5, pair: anthropic/haiku-5.5, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.125)", labels: {provider: anthropic, model: haiku-5.5, pair: anthropic/haiku-5.5, tier: standard, context: short, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: anthropic, model: haiku-5.5, pair: anthropic/haiku-5.5, tier: standard, context: short, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: anthropic, model: haiku-5.5, pair: anthropic/haiku-5.5, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2.50)", labels: {provider: anthropic, model: haiku-5.5, pair: anthropic/haiku-5.5, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.05)", labels: {provider: anthropic, model: haiku-5.5, pair: anthropic/haiku-5.5, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.625)", labels: {provider: anthropic, model: haiku-5.5, pair: anthropic/haiku-5.5, tier: standard, context: long, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1)", labels: {provider: anthropic, model: haiku-5.5, pair: anthropic/haiku-5.5, tier: standard, context: long, token_type: cache_write_1h}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1)", labels: {provider: anthropic, model: haiku-4.5, pair: anthropic/haiku-4.5, tier: standard, context: any, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: anthropic, model: haiku-4.5, pair: anthropic/haiku-4.5, tier: standard, context: any, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.10)", labels: {provider: anthropic, model: haiku-4.5, pair: anthropic/haiku-4.5, tier: standard, context: any, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.25)", labels: {provider: anthropic, model: haiku-4.5, pair: anthropic/haiku-4.5, tier: standard, context: any, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2)", labels: {provider: anthropic, model: haiku-4.5, pair: anthropic/haiku-4.5, tier: standard, context: any, token_type: cache_write_1h}}
+
+        # OpenAI (standard tier; batch/flex/fast/fine-tuned models excluded)
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: openai, model: gpt-6-astra, pair: openai/gpt-6-astra, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(50)", labels: {provider: openai, model: gpt-6-astra, pair: openai/gpt-6-astra, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.00)", labels: {provider: openai, model: gpt-6-astra, pair: openai/gpt-6-astra, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(12.50)", labels: {provider: openai, model: gpt-6-astra, pair: openai/gpt-6-astra, tier: standard, context: short, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(20)", labels: {provider: openai, model: gpt-6-astra, pair: openai/gpt-6-astra, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(75)", labels: {provider: openai, model: gpt-6-astra, pair: openai/gpt-6-astra, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2.00)", labels: {provider: openai, model: gpt-6-astra, pair: openai/gpt-6-astra, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(25)", labels: {provider: openai, model: gpt-6-astra, pair: openai/gpt-6-astra, tier: standard, context: long, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2)", labels: {provider: openai, model: gpt-6.1-sol, pair: openai/gpt-6.1-sol, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: openai, model: gpt-6.1-sol, pair: openai/gpt-6.1-sol, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.10)", labels: {provider: openai, model: gpt-6.1-sol, pair: openai/gpt-6.1-sol, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2.50)", labels: {provider: openai, model: gpt-6.1-sol, pair: openai/gpt-6.1-sol, tier: standard, context: short, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(4)", labels: {provider: openai, model: gpt-6.1-sol, pair: openai/gpt-6.1-sol, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(15)", labels: {provider: openai, model: gpt-6.1-sol, pair: openai/gpt-6.1-sol, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: openai, model: gpt-6.1-sol, pair: openai/gpt-6.1-sol, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: openai, model: gpt-6.1-sol, pair: openai/gpt-6.1-sol, tier: standard, context: long, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1)", labels: {provider: openai, model: gpt-6.1-terra, pair: openai/gpt-6.1-terra, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: openai, model: gpt-6.1-terra, pair: openai/gpt-6.1-terra, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.05)", labels: {provider: openai, model: gpt-6.1-terra, pair: openai/gpt-6.1-terra, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.25)", labels: {provider: openai, model: gpt-6.1-terra, pair: openai/gpt-6.1-terra, tier: standard, context: short, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2)", labels: {provider: openai, model: gpt-6.1-terra, pair: openai/gpt-6.1-terra, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(7.50)", labels: {provider: openai, model: gpt-6.1-terra, pair: openai/gpt-6.1-terra, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.10)", labels: {provider: openai, model: gpt-6.1-terra, pair: openai/gpt-6.1-terra, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2.50)", labels: {provider: openai, model: gpt-6.1-terra, pair: openai/gpt-6.1-terra, tier: standard, context: long, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.10)", labels: {provider: openai, model: gpt-6-luna, pair: openai/gpt-6-luna, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: openai, model: gpt-6-luna, pair: openai/gpt-6-luna, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.01)", labels: {provider: openai, model: gpt-6-luna, pair: openai/gpt-6-luna, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.125)", labels: {provider: openai, model: gpt-6-luna, pair: openai/gpt-6-luna, tier: standard, context: short, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: openai, model: gpt-6-luna, pair: openai/gpt-6-luna, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.75)", labels: {provider: openai, model: gpt-6-luna, pair: openai/gpt-6-luna, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.02)", labels: {provider: openai, model: gpt-6-luna, pair: openai/gpt-6-luna, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.25)", labels: {provider: openai, model: gpt-6-luna, pair: openai/gpt-6-luna, tier: standard, context: long, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2)", labels: {provider: openai, model: gpt-6-sol, pair: openai/gpt-6-sol, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: openai, model: gpt-6-sol, pair: openai/gpt-6-sol, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: openai, model: gpt-6-sol, pair: openai/gpt-6-sol, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2.50)", labels: {provider: openai, model: gpt-6-sol, pair: openai/gpt-6-sol, tier: standard, context: short, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(4)", labels: {provider: openai, model: gpt-6-sol, pair: openai/gpt-6-sol, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(15)", labels: {provider: openai, model: gpt-6-sol, pair: openai/gpt-6-sol, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.40)", labels: {provider: openai, model: gpt-6-sol, pair: openai/gpt-6-sol, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: openai, model: gpt-6-sol, pair: openai/gpt-6-sol, tier: standard, context: long, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(4)", labels: {provider: openai, model: gpt-5.6-sol, pair: openai/gpt-5.6-sol, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(20)", labels: {provider: openai, model: gpt-5.6-sol, pair: openai/gpt-5.6-sol, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.40)", labels: {provider: openai, model: gpt-5.6-sol, pair: openai/gpt-5.6-sol, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: openai, model: gpt-5.6-sol, pair: openai/gpt-5.6-sol, tier: standard, context: short, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(8)", labels: {provider: openai, model: gpt-5.6-sol, pair: openai/gpt-5.6-sol, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(30)", labels: {provider: openai, model: gpt-5.6-sol, pair: openai/gpt-5.6-sol, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.80)", labels: {provider: openai, model: gpt-5.6-sol, pair: openai/gpt-5.6-sol, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: openai, model: gpt-5.6-sol, pair: openai/gpt-5.6-sol, tier: standard, context: long, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2)", labels: {provider: openai, model: gpt-5.6-terra, pair: openai/gpt-5.6-terra, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(12)", labels: {provider: openai, model: gpt-5.6-terra, pair: openai/gpt-5.6-terra, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: openai, model: gpt-5.6-terra, pair: openai/gpt-5.6-terra, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2.50)", labels: {provider: openai, model: gpt-5.6-terra, pair: openai/gpt-5.6-terra, tier: standard, context: short, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(4)", labels: {provider: openai, model: gpt-5.6-terra, pair: openai/gpt-5.6-terra, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(18)", labels: {provider: openai, model: gpt-5.6-terra, pair: openai/gpt-5.6-terra, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.40)", labels: {provider: openai, model: gpt-5.6-terra, pair: openai/gpt-5.6-terra, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: openai, model: gpt-5.6-terra, pair: openai/gpt-5.6-terra, tier: standard, context: long, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: openai, model: gpt-5.6-luna, pair: openai/gpt-5.6-luna, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.20)", labels: {provider: openai, model: gpt-5.6-luna, pair: openai/gpt-5.6-luna, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.02)", labels: {provider: openai, model: gpt-5.6-luna, pair: openai/gpt-5.6-luna, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.25)", labels: {provider: openai, model: gpt-5.6-luna, pair: openai/gpt-5.6-luna, tier: standard, context: short, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.40)", labels: {provider: openai, model: gpt-5.6-luna, pair: openai/gpt-5.6-luna, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.80)", labels: {provider: openai, model: gpt-5.6-luna, pair: openai/gpt-5.6-luna, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.04)", labels: {provider: openai, model: gpt-5.6-luna, pair: openai/gpt-5.6-luna, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: openai, model: gpt-5.6-luna, pair: openai/gpt-5.6-luna, tier: standard, context: long, token_type: cache_write}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: openai, model: gpt-5.5, pair: openai/gpt-5.5, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(30)", labels: {provider: openai, model: gpt-5.5, pair: openai/gpt-5.5, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: openai, model: gpt-5.5, pair: openai/gpt-5.5, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: openai, model: gpt-5.5, pair: openai/gpt-5.5, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(45)", labels: {provider: openai, model: gpt-5.5, pair: openai/gpt-5.5, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.00)", labels: {provider: openai, model: gpt-5.5, pair: openai/gpt-5.5, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(30)", labels: {provider: openai, model: gpt-5.5-pro, pair: openai/gpt-5.5-pro, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(180)", labels: {provider: openai, model: gpt-5.5-pro, pair: openai/gpt-5.5-pro, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(60)", labels: {provider: openai, model: gpt-5.5-pro, pair: openai/gpt-5.5-pro, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(270)", labels: {provider: openai, model: gpt-5.5-pro, pair: openai/gpt-5.5-pro, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2.50)", labels: {provider: openai, model: gpt-5.4, pair: openai/gpt-5.4, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(15)", labels: {provider: openai, model: gpt-5.4, pair: openai/gpt-5.4, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.25)", labels: {provider: openai, model: gpt-5.4, pair: openai/gpt-5.4, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(5)", labels: {provider: openai, model: gpt-5.4, pair: openai/gpt-5.4, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(22.50)", labels: {provider: openai, model: gpt-5.4, pair: openai/gpt-5.4, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: openai, model: gpt-5.4, pair: openai/gpt-5.4, tier: standard, context: long, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(30)", labels: {provider: openai, model: gpt-5.4-pro, pair: openai/gpt-5.4-pro, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(180)", labels: {provider: openai, model: gpt-5.4-pro, pair: openai/gpt-5.4-pro, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(60)", labels: {provider: openai, model: gpt-5.4-pro, pair: openai/gpt-5.4-pro, tier: standard, context: long, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(270)", labels: {provider: openai, model: gpt-5.4-pro, pair: openai/gpt-5.4-pro, tier: standard, context: long, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.75)", labels: {provider: openai, model: gpt-5.4-mini, pair: openai/gpt-5.4-mini, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(4.50)", labels: {provider: openai, model: gpt-5.4-mini, pair: openai/gpt-5.4-mini, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.075)", labels: {provider: openai, model: gpt-5.4-mini, pair: openai/gpt-5.4-mini, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.20)", labels: {provider: openai, model: gpt-5.4-nano, pair: openai/gpt-5.4-nano, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.25)", labels: {provider: openai, model: gpt-5.4-nano, pair: openai/gpt-5.4-nano, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.02)", labels: {provider: openai, model: gpt-5.4-nano, pair: openai/gpt-5.4-nano, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.75)", labels: {provider: openai, model: gpt-5.2, pair: openai/gpt-5.2, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(14)", labels: {provider: openai, model: gpt-5.2, pair: openai/gpt-5.2, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.175)", labels: {provider: openai, model: gpt-5.2, pair: openai/gpt-5.2, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(21)", labels: {provider: openai, model: gpt-5.2-pro, pair: openai/gpt-5.2-pro, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(168)", labels: {provider: openai, model: gpt-5.2-pro, pair: openai/gpt-5.2-pro, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.25)", labels: {provider: openai, model: gpt-5.1, pair: openai/gpt-5.1, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: openai, model: gpt-5.1, pair: openai/gpt-5.1, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.125)", labels: {provider: openai, model: gpt-5.1, pair: openai/gpt-5.1, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.25)", labels: {provider: openai, model: gpt-5, pair: openai/gpt-5, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(10)", labels: {provider: openai, model: gpt-5, pair: openai/gpt-5, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.125)", labels: {provider: openai, model: gpt-5, pair: openai/gpt-5, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(15)", labels: {provider: openai, model: gpt-5-pro, pair: openai/gpt-5-pro, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(120)", labels: {provider: openai, model: gpt-5-pro, pair: openai/gpt-5-pro, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.25)", labels: {provider: openai, model: gpt-5-mini, pair: openai/gpt-5-mini, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2)", labels: {provider: openai, model: gpt-5-mini, pair: openai/gpt-5-mini, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.025)", labels: {provider: openai, model: gpt-5-mini, pair: openai/gpt-5-mini, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.05)", labels: {provider: openai, model: gpt-5-nano, pair: openai/gpt-5-nano, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.40)", labels: {provider: openai, model: gpt-5-nano, pair: openai/gpt-5-nano, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.005)", labels: {provider: openai, model: gpt-5-nano, pair: openai/gpt-5-nano, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(2)", labels: {provider: openai, model: gpt-4.1, pair: openai/gpt-4.1, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(8)", labels: {provider: openai, model: gpt-4.1, pair: openai/gpt-4.1, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.50)", labels: {provider: openai, model: gpt-4.1, pair: openai/gpt-4.1, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.40)", labels: {provider: openai, model: gpt-4.1-mini, pair: openai/gpt-4.1-mini, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(1.60)", labels: {provider: openai, model: gpt-4.1-mini, pair: openai/gpt-4.1-mini, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.10)", labels: {provider: openai, model: gpt-4.1-mini, pair: openai/gpt-4.1-mini, tier: standard, context: short, token_type: cache_read}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.10)", labels: {provider: openai, model: gpt-4.1-nano, pair: openai/gpt-4.1-nano, tier: standard, context: short, token_type: input}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.40)", labels: {provider: openai, model: gpt-4.1-nano, pair: openai/gpt-4.1-nano, tier: standard, context: short, token_type: output}}
+        - {record: rhai_api_pricing_mtok, expr: "vector(0.025)", labels: {provider: openai, model: gpt-4.1-nano, pair: openai/gpt-4.1-nano, tier: standard, context: short, token_type: cache_read}}
+
+        # --- END PRICING TABLE ---

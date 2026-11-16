@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Long prompt, short reply, low concurrency - mimics summarization/RAG
+# workloads. Prefill-heavy, so it's useful for the prefill-vs-decode time
+# panel and KV cache utilisation under large contexts.
+
+resources:
+  - ../../base
+
+configMapGenerator:
+  - name: guidellm-config
+    behavior: merge
+    envs:
+      - run.env
+
+secretGenerator:
+  - name: guidellm-api-key
+    behavior: merge
+    envs:
+      - secret.env

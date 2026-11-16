@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Moderate prompt/output size, high concurrency - deliberately pushes the
+# engine past its max-num-seqs so requests queue. Use this to drive the
+# vllm-cache-queue-pressure dashboard (waiting requests, KV cache
+# utilisation, inter-token latency stalls).
+
+resources:
+  - ../../base
+
+configMapGenerator:
+  - name: guidellm-config
+    behavior: merge
+    envs:
+      - run.env
+
+secretGenerator:
+  - name: guidellm-api-key
+    behavior: merge
+    envs:
+      - secret.env

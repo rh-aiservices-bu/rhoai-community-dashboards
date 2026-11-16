@@ -7,3 +7,6 @@ package-lock.json
 # OS noise
 .DS_Store
 scaffold-out/
+
+# GuideLLM job overlay secrets (API keys) - never commit these
+validation/guidellm-job/**/secret.env

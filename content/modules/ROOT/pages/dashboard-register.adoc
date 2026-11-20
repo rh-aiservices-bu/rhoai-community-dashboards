@@ -1,0 +1,35 @@
+= Dashboard Register
+
+Some dashboards cannot use the out-of-the-box datasource. A dashboard shipped alongside the operator that exports the metrics it reads is versioned with that operator and would drift the moment it was copied here. One that joins several datasources is not portable to a cluster that has only the Monitoring Stack.
+
+Those are listed in the link:{repo-url}/tree/main/dashboards#dashboard-register[dashboard register] instead: a table pointing at the repository that owns the dashboard, recording the format, the required data, and the maintainer. Entries meet the same hygiene bar as anything else here (no credentials, no customer identifiers, no internal endpoints, required metrics documented), but their authors keep maintaining them.
+
+The split is about ownership, not quality. A register entry says "this exists, it is good, and it is not ours to maintain".
+
+== Adding an entry
+
+Add a row to the table in `dashboards/README.md`, in alphabetical order by dashboard name, and open a pull request.
+
+[cols="1,3", options="header"]
+|===
+| Column | What to put in it
+
+| Dashboard
+| The dashboard title as it appears in the tool, so people can match what they see to this list.
+
+| Source repository
+| Link to the repository, plus a direct link to the dashboard definition if it is not obvious from the root.
+
+| Format
+| Perses or Grafana, with the schema or spec version you tested against.
+
+| Required data
+| Datasource type, the metric families consumed, and anything extra the dashboard depends on such as recording rules, exporters, or operators.
+
+| Maintainer
+| GitHub handle or team to contact. Not necessarily the author.
+|===
+
+If an entry needs more than a table row to explain, add `dashboards/<repository-name>.md` and link to it from the Dashboard column. Keep the table itself scannable.
+
+Entries point at repositories outside this one, so they can move or go stale. If you find a dead link, open a pull request removing the row and say so in the description.

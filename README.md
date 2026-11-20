@@ -13,6 +13,7 @@ Contributions include Perses and Grafana dashboards or entries in the [dashboard
 | [Repository Structure](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/repository-structure.html) | Directory layout, the dashboard directory contract, what CI checks |
 | [Deploy a Perses Dashboard](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/deploy-perses.html) | Verifying the Monitoring Stack, applying a `PersesDashboard`, troubleshooting |
 | [The RHOAI Monitoring Stack](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/rhoai-monitoring.html) | What the platform deploys and where dashboard data comes from |
+| [Dashboard Register](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/dashboard-register.html) | Dashboards that live outside this repository, and how to add an entry |
 | [Contribution Guide](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/contributing.html) | Scope, workflow, the README each dashboard needs, review gates |
 
 ## Dashboard Register
@@ -28,6 +29,8 @@ Dashboards need live traffic to show meaningful data. [`validation/guidellm-job`
 It ships as a Kustomize base plus a few example overlays (chat-like traffic, long-context/summarization, and high-concurrency stress) that you can copy and point at your own endpoint.
 
 > **Note:** This currently has not been checked against a disconnected environment. See [#29](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/issues/29) for details.
+
+See [Dashboard Register](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/dashboard-register.html) in the full documentation for how to add an entry.
 
 ## Contributing
 

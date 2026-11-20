@@ -12,7 +12,7 @@ One question decides it: *does the dashboard work on a cluster that has only the
 | This repository
 
 | Needs its own exporter, recording rules, or operator to produce its metrics
-| xref:custom-dashboards.adoc#_dashboard_register[Dashboard register]
+| xref:dashboard-register.adoc[Dashboard register]
 
 | Joins several datasources, or a datasource you deploy yourself
 | Dashboard register
@@ -25,6 +25,8 @@ One question decides it: *does the dashboard work on a cluster that has only the
 |===
 
 A register entry is not a rejection. It keeps your dashboard discoverable alongside these ones while leaving you in control of a thing only you can maintain correctly. Copying an operator-versioned dashboard into this repository guarantees it goes stale on the operator's next release.
+
+A dashboard contribution is the manifest or manifests and the README, nothing else. Load generators, synthetic-traffic scripts, demo pods, and similar tooling to produce test data do not belong in a dashboard's directory, even as an optional extra: that is an application, not a dashboard. If you have one, keep it in its own repository and link to it from the README if it would genuinely help a reviewer.
 
 == Contributing a dashboard
 
@@ -63,6 +65,8 @@ Deployment:: The `oc apply` command and the namespace. Note anything beyond the 
 Known limitations:: Panels that need a metric not everyone has, or that assume a particular model-naming scheme. Writing these down is faster than fielding the questions.
 Screenshot:: Optional, and only with sanitized data. Real model names and project names are customer identifiers.
 
+Keep it short: a reader should be able to tell whether the dashboard is relevant to them in under a minute. The sections above are a ceiling, not a starting point for more — a question-and-answer table walking through every panel, a troubleshooting appendix, or a load-generation how-to belongs in the dashboard's own upstream repository, not inlined here. A README that is growing past this shape is usually a sign the contribution itself has grown past "dashboard"; re-check xref:contributing.adoc#_does_your_dashboard_belong_here[the scope table] above.
+
 == Before you commit
 
 Remove credentials, tokens, customer and project identifiers, internal hostnames, and cluster URLs from manifests, screenshots, and README examples. Dashboard JSON exported from a live Grafana carries datasource UIDs and sometimes the cluster URL; check the whole file, not the queries.
@@ -81,9 +85,7 @@ Neither gate checks that a Perses dashboard and a Grafana dashboard with similar
 
 == Adding a register entry
 
-Add a row to the table in `dashboards/README.md`, alphabetically by dashboard name, with the source repository, the format and schema version you tested, the required data, and a maintainer handle.
-
-Entries point at repositories outside this one, so they go stale. If you find a dead link, open a pull request removing the row and say so in the description.
+See xref:dashboard-register.adoc#_adding_an_entry[Adding an entry] on the Dashboard Register page.
 
 == Documentation
 

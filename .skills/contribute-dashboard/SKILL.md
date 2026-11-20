@@ -20,6 +20,14 @@ Ask one question: does the dashboard query only `data-science-prometheus-datasou
   [dashboard register](../../dashboards/README.md) instead, as a row in `dashboards/README.md`,
   not a directory here. Stop and help the contributor write that row instead.
 
+A dashboard contribution is the manifest(s) and the README — nothing else. Load generators,
+synthetic-traffic scripts, demo pods, or other tooling to produce test data do not belong in
+`dashboards/<slug>/`, even as an optional extra: that's an application, not a dashboard, and the
+validator won't flag it. If a contributor has one, it should live in its own repository (linked
+from the README if it's genuinely useful to reviewers), not merged in alongside the manifest. The
+dashboard should be demonstrable against whatever traffic the model/service already receives, or
+against metrics from a real test run described in prose — not a bundled script.
+
 ## 2. Gather the facts up front
 
 Ask for whatever isn't already given:
@@ -89,12 +97,20 @@ one format doesn't require the other.
 
 ## 5. Write the README
 
-Use `templates/README.md` as the structure. Required sections, per `contributing.adoc`:
+Use `templates/README.md` as the structure, and keep to it. Required sections, per
+`contributing.adoc`:
 
 Purpose and audience, Maintainer, Tested versions, Required metrics, Deployment (the `oc apply`
 command and namespace, plus anything beyond the Monitoring Stack), Known limitations, and an
 optional screenshot — only with sanitised data; real model/project names are customer
 identifiers.
+
+Keep it short. `dashboards/vllm-performance-monitor/README.md` is the length and shape to match —
+a reader should be able to decide whether this dashboard is relevant to them in under a minute.
+Don't add a question-and-answer table walking through every panel, a troubleshooting appendix, or
+a load-generation how-to; if that kind of material feels necessary, it belongs in the dashboard's
+own upstream repository (and the register), not inlined here. A README that runs to hundreds of
+lines is a sign the contribution has grown past "dashboard" — go back to step 1.
 
 ## 6. Before anything is committed
 

@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - job.yaml
+
+# Defaults are intentionally unusable placeholders for GUIDELLM_TARGET/MODEL -
+# override every value via an overlay's run.env (see ../overlays/*), never
+# edit job.yaml or this file directly.
+configMapGenerator:
+  - name: guidellm-config
+    envs:
+      - guidellm.env
+
+# Empty by default so the job runs unmodified against endpoints that don't
+# require auth (e.g. an in-cluster vLLM service with no API key configured).
+secretGenerator:
+  - name: guidellm-api-key
+    envs:
+      - guidellm-secret.env

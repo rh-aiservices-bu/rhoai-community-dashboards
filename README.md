@@ -2,12 +2,10 @@
 
 A community-driven collection of custom dashboards as code for Red Hat OpenShift AI (RHOAI). This repository brings together contributions from field teams, customers, and the wider community to answer operational questions specific to their AI workloads and organizations.
 
-<figure align="center">
+<div align="center">
   <img src="./diagrams/overview.gif">
-  <figcaption>
-    <em> Demonstration of the <a href="dashboards/vllm-performance-monitor">vllm-performance-monitor</a> community dashboard.</em>
-  </figcaption>
-</figure>
+  <p><em>Demonstration of the <a href="dashboards/vllm-performance-monitor">vllm-performance-monitor</a> community dashboard.</em></p>
+</div>
 
 
 

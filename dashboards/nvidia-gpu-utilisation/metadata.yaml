@@ -1,0 +1,9 @@
+# Index metadata. Rendered into the dashboard index on the docs site and in
+# dashboards/README.md by validation/scripts/generate_dashboard_index.sh.
+title: NVIDIA GPU Utilisation
+summary: >-
+  GPU utilisation at cluster, model and GPU level, including which GPUs are assigned to which
+  model.
+audience: Infrastructure and model deployment engineers looking at cluster GPU capacity
+maintainer: willsparker
+rhoai: "3.4 + 3.5"

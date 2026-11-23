@@ -1,0 +1,9 @@
+# Index metadata. Rendered into the dashboard index on the docs site and in
+# dashboards/README.md by validation/scripts/generate_dashboard_index.sh.
+title: Cost per Token
+summary: >-
+  Prices the token mix your vLLM deployments actually serve against commercial API list prices
+  and the amortized hardware cost of running the same load yourself.
+audience: Cluster operators and platform teams comparing self-hosted serving costs with API pricing
+maintainer: jharmison-redhat
+rhoai: "3.5"

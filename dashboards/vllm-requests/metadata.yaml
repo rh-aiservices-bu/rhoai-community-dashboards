@@ -1,0 +1,9 @@
+# Index metadata. Rendered into the dashboard index on the docs site and in
+# dashboards/README.md by validation/scripts/generate_dashboard_index.sh.
+title: vLLM Requests
+summary: >-
+  Running request count per vLLM model, as a first look before reaching for a deeper
+  performance dashboard.
+audience: Anyone operating model serving on this cluster
+maintainer: rcarrata
+rhoai: "3.5"

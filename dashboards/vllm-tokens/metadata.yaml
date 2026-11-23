@@ -1,0 +1,8 @@
+# Index metadata. Rendered into the dashboard index on the docs site and in
+# dashboards/README.md by validation/scripts/generate_dashboard_index.sh.
+title: vLLM Token Throughput
+summary: >-
+  Output token rate per vLLM model, as tokens per second rather than a running total.
+audience: Anyone operating model serving on this cluster
+maintainer: rcarrata
+rhoai: "3.5"

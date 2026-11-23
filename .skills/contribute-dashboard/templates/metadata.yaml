@@ -1,0 +1,24 @@
+# What the generated dashboard index says about this dashboard, on the docs site and in
+# dashboards/README.md. Every field is required.
+#
+# Formats (Perses / Grafana) and admin-only visibility are read from the directory and the
+# manifest, so they are never restated here.
+
+# Must match spec.config.display.name with the "[C] - " prefix stripped. The validator checks
+# the two against each other: they are one fact written twice.
+title: <Dashboard Title>
+
+# One sentence, under 200 characters, saying what the dashboard shows. No pipe characters -
+# they break the generated tables. Longer explanation goes in the README, not here.
+summary: >-
+  <What it shows, in one sentence.>
+
+# Who the dashboard is for. "Admin only" is added automatically when the resource name ends
+# in -admin, so there is no need to say it here.
+audience: <Who it is for>
+
+# Bare GitHub handle or team, with no @ and no URL: the index builds the link.
+maintainer: <github-handle>
+
+# The OpenShift AI version you tested on. Quoted, so "3.5" does not become a number.
+rhoai: "<e.g. 3.5>"

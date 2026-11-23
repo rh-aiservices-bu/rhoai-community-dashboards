@@ -7,6 +7,8 @@ on:
       - 'content/**'
       - 'supplemental-ui/**'
       - 'site.yml'
+      - 'dashboards/**'
+      - 'validation/scripts/generate_dashboard_index.sh'
       - '.github/workflows/gh-pages.yml'
   pull_request:
     branches: [main]
@@ -14,6 +16,8 @@ on:
       - 'content/**'
       - 'supplemental-ui/**'
       - 'site.yml'
+      - 'dashboards/**'
+      - 'validation/scripts/generate_dashboard_index.sh'
       - '.github/workflows/gh-pages.yml'
   workflow_dispatch:
 
@@ -25,6 +29,9 @@ permissions:
 concurrency:
   group: gh-pages
   cancel-in-progress: false
+
+env:
+  YQ_VERSION: v4.44.3
 
 jobs:
   build:
@@ -40,6 +47,17 @@ jobs:
           node-version: '20'
       - name: install antora
         run: npm install --global @antora/cli@3.1 @antora/site-generator@3.1 @andrew-jones/antora-tabs-extension @antora/lunr-extension
+      # The index partials the pages include are generated from dashboards/. Running this here
+      # means the published site is current even if the dashboard index workflow has not
+      # committed them yet - a push made with GITHUB_TOKEN does not trigger this build.
+      - name: install yq
+        run: |
+          curl -sSL -o /usr/local/bin/yq \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          chmod +x /usr/local/bin/yq
+          yq --version
+      - name: generate dashboard index
+        run: ./validation/scripts/generate_dashboard_index.sh
       - name: antora generate
         run: antora generate site.yml --stacktrace
       - name: copy favicon to site root

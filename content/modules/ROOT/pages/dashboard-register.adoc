@@ -1,35 +1,98 @@
 = Dashboard Register
 
+Everything this repository indexes: the dashboards kept here, and the dashboards kept in their own repositories.
+
+Both tables below are generated from the repository itself - `dashboards/<slug>/metadata.yaml` for the first, `dashboards/register.yaml` for the second - and rebuilt when a dashboard lands on `main`, so neither can fall behind what the repository holds.
+
+== In this repository
+
+include::partial$dashboard-index.adoc[]
+
+Every one of these runs on a cluster with only the {rhoai-short} Monitoring Stack: one `oc apply`, nothing else to install. xref:deploy-perses.adoc[Deploy a Perses Dashboard] has the commands. "Admin only" marks a dashboard whose `metadata.name` ends in `-admin`, which the console hides from users without `cluster-monitoring-view`.
+
+== External dashboards
+
 Some dashboards cannot use the out-of-the-box datasource. A dashboard shipped alongside the operator that exports the metrics it reads is versioned with that operator and would drift the moment it was copied here. One that joins several datasources is not portable to a cluster that has only the Monitoring Stack.
 
-Those are listed in the link:{repo-url}/tree/main/dashboards#dashboard-register[dashboard register] instead: a table pointing at the repository that owns the dashboard, recording the format, the required data, and the maintainer. Entries meet the same hygiene bar as anything else here (no credentials, no customer identifiers, no internal endpoints, required metrics documented), but their authors keep maintaining them.
+Those are indexed instead, by the repository that owns them, recording the format, the required data, and the maintainer. Entries meet the same hygiene bar as anything else here (no credentials, no customer identifiers, no internal endpoints, required metrics documented), but their authors keep maintaining them.
 
 The split is about ownership, not quality. A register entry says "this exists, it is good, and it is not ours to maintain".
 
-== Adding an entry
+include::partial$indexed-repositories.adoc[]
 
-Add a row to the table in `dashboards/README.md`, in alphabetical order by dashboard name, and open a pull request.
+== Adding a dashboard to this repository
+
+A directory under `dashboards/` holding the manifest, the README, and a `metadata.yaml`, which is what puts the dashboard in the first table:
+
+[source,yaml]
+----
+title: vLLM Token Throughput    # <1>
+summary: >-                     # <2>
+  Output token rate per vLLM model, as tokens per second rather than a running total.
+audience: Anyone operating model serving on this cluster
+maintainer: rcarrata            # <3>
+rhoai: "3.5"                    # <4>
+----
+<1> Must match `display.name` with the `[C] - ` prefix stripped. Validation checks the two against each other, because they are one fact written twice.
+<2> One sentence, under 200 characters. Anything longer belongs in the README.
+<3> A bare GitHub handle or team, with no `@` and no URL. The index builds the link.
+<4> The {rhoai-short} version you tested on.
+
+Formats and admin-only visibility are read from the directory and the manifest, so they are never restated here. xref:contributing.adoc[The contribution guide] covers the rest of the workflow.
+
+== Adding a register entry
+
+Add to `dashboards/register.yaml`, under the repository that owns the dashboard, and open a pull request. Entries sort by `owner/name` when rendered, so position in the file does not matter:
+
+[source,yaml]
+----
+- repo: https://github.com/<owner>/<name>
+  maintainer: <handle>
+  dashboards:
+    - title: <dashboard title>
+      format: <Perses or Grafana, with the version tested against>
+      url: <link to the dashboard definition>
+      required_data: <datasource, metric families, anything extra>
+      details: <file>.md
+----
 
 [cols="1,3", options="header"]
 |===
-| Column | What to put in it
+| Field | What to put in it
 
-| Dashboard
+| `repo`
+| The repository URL. `owner/name` is derived from it for display, so it is not repeated. A repository that ships several dashboards is one entry with several `dashboards`.
+
+| `maintainer`
+| GitHub handle or team to contact, without the `@`. Not necessarily the author.
+
+| `title`
 | The dashboard title as it appears in the tool, so people can match what they see to this list.
 
-| Source repository
-| Link to the repository, plus a direct link to the dashboard definition if it is not obvious from the root.
-
-| Format
+| `format`
 | Perses or Grafana, with the schema or spec version you tested against.
 
-| Required data
+| `url`
+| A direct link to the dashboard definition, rather than leaving the reader to find it.
+
+| `required_data`
 | Datasource type, the metric families consumed, and anything extra the dashboard depends on such as recording rules, exporters, or operators.
 
-| Maintainer
-| GitHub handle or team to contact. Not necessarily the author.
+| `details`
+| Optional. If an entry needs more than a row to explain, add `dashboards/<repository-name>.md` and point at it from here. Keep the entry itself scannable.
 |===
 
-If an entry needs more than a table row to explain, add `dashboards/<repository-name>.md` and link to it from the Dashboard column. Keep the table itself scannable.
+Entries point at repositories outside this one, so they can move or go stale. If you find a dead link, open a pull request removing the entry and say so in the description.
 
-Entries point at repositories outside this one, so they can move or go stale. If you find a dead link, open a pull request removing the row and say so in the description.
+== The tables are generated
+
+`validation/scripts/generate_dashboard_index.sh` writes both of them, here and in link:{repo-url}/tree/main/dashboards[dashboards/README.md]. A hand edit to either is overwritten the next time it runs, which is on every merge that touches `dashboards/`.
+
+To see your own entry before opening a pull request:
+
+[source,bash]
+----
+./validation/scripts/generate_dashboard_index.sh
+----
+
+It needs `yq`. Run `./validation/scripts/validate_dashboards.sh` as well: that is what checks the sources, and it is the gate on the pull request.

@@ -1,0 +1,9 @@
+# Index metadata. Rendered into the dashboard index on the docs site and in
+# dashboards/README.md by validation/scripts/generate_dashboard_index.sh.
+title: "vLLM Cache & Queue Pressure"
+summary: >-
+  Engine-side causes of vLLM latency degradation: KV cache saturation, queue depth, inter-token
+  stalls, and where engine time goes between prefill and decode, per model.
+audience: Platform administrators and AI observability teams investigating a latency change
+maintainer: suhasvkashyap
+rhoai: "3.6.0-ea.2"

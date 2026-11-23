@@ -51,6 +51,8 @@ The xref:repository-structure.adoc#_the_dashboard_directory_contract[directory c
 
 . *Write the README.* Required sections below.
 
+. *Describe it for the index.* A `metadata.yaml` next to the README, carrying `title`, `summary`, `audience`, `maintainer` and `rhoai`. That is what puts the dashboard in the xref:dashboard-register.adoc[index], on this site and in `dashboards/README.md`; both tables are generated, so there is no row to write by hand. xref:dashboard-register.adoc#_adding_a_dashboard_to_this_repository[The fields are documented here].
+
 . *Open a pull request* describing which cluster and which {rhoai-short} version you tested on.
 
 == The dashboard README
@@ -85,7 +87,7 @@ Neither gate checks that a Perses dashboard and a Grafana dashboard with similar
 
 == Adding a register entry
 
-See xref:dashboard-register.adoc#_adding_an_entry[Adding an entry] on the Dashboard Register page.
+See xref:dashboard-register.adoc#_adding_a_register_entry[Adding a register entry] on the Dashboard Register page.
 
 == Documentation
 

@@ -1,0 +1,105 @@
+name: dashboard index
+
+# The index tables in the docs and in dashboards/README.md are generated, so nothing here is a
+# contributor's job: on a pull request this only shows what the index would become, and on a
+# merge it regenerates and commits.
+#
+# Note that the commit this makes does NOT rebuild the site on its own: a push made with the
+# default GITHUB_TOKEN does not trigger other workflows. The github pages workflow watches
+# dashboards/** itself and runs the generator before building, which is what keeps the
+# published page current.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dashboards/**'
+      - 'validation/scripts/generate_dashboard_index.sh'
+      - '.github/workflows/dashboard-index.yml'
+  pull_request:
+    paths:
+      - 'dashboards/**'
+      - 'validation/scripts/generate_dashboard_index.sh'
+      - '.github/workflows/dashboard-index.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  YQ_VERSION: v4.44.3
+
+concurrency:
+  group: dashboard-index-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: index preview
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned rather than relying on whatever the runner image ships, so the result cannot
+      # change under us when the image is updated.
+      - name: install yq
+        run: |
+          curl -sSL -o /usr/local/bin/yq \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          chmod +x /usr/local/bin/yq
+          yq --version
+
+      # Informational on purpose. A contributor is not expected to run the generator, and a
+      # pull request from a fork cannot be pushed to from here anyway, so this never gates.
+      - name: show what the index would become
+        run: |
+          {
+            echo "### Dashboard index"
+            echo
+            if ./validation/scripts/generate_dashboard_index.sh --check > index.diff 2>&1; then
+              echo "No change: this pull request adds no rows to the index."
+            else
+              echo "Regenerated on merge, as:"
+              echo
+              echo '```diff'
+              cat index.diff
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  sync:
+    name: regenerate on main
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Full history: the commit below rebases onto main in case another merge landed while
+      # this ran.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: install yq
+        run: |
+          curl -sSL -o /usr/local/bin/yq \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: regenerate
+        run: ./validation/scripts/generate_dashboard_index.sh
+
+      - name: commit if changed
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "index already current, nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A content/modules/ROOT/partials dashboards/README.md
+          git commit -m "update dashboard index"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

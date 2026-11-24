@@ -7,9 +7,8 @@ A community-driven collection of custom dashboards as code for Red Hat OpenShift
   <p><em>Demonstration of the <a href="dashboards/vllm-performance-monitor">vllm-performance-monitor</a> community dashboard.</em></p>
 </div>
 
-
-
 Contributions include Perses and Grafana dashboards or entries in the [dashboard register](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/tree/main/dashboards#dashboard-register) - an index of dashboards that live off-repository.
+
 
 **Full documentation:** https://rh-aiservices-bu.github.io/rhoai-community-dashboards/
 
@@ -23,9 +22,9 @@ Contributions include Perses and Grafana dashboards or entries in the [dashboard
 | [Dashboard Register](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/dashboard-register.html) | Dashboards that live outside this repository, and how to add an entry |
 | [Contribution Guide](https://rh-aiservices-bu.github.io/rhoai-community-dashboards/modules/main/contributing.html) | Scope, workflow, the README each dashboard needs, review gates |
 
-## Dashboard Register
+## Dashboard Index
 
-The [dashboard register](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/tree/main/dashboards#dashboard-register) is an index of dashboards that live in their own repositories rather than in this tree. 
+[`dashboards/`](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/tree/main/dashboards) carries a generated index: every dashboard held in this repository, and then the register, an index of dashboards that live in their own repositories rather than in this tree.
 
 Some dashboards ship as part of a larger application, where the dashboard and the exporter that feeds it are versioned together and would drift if copied here. This register points to those, so they can be found alongside the dashboards held directly in this repository.
 

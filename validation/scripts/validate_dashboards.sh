@@ -8,6 +8,10 @@
 # model: a missing README or an ad-hoc datasource is a fact, not a judgement.
 # The AI review layer handles what genuinely needs an opinion.
 #
+# Also checks the two sources the dashboard index is generated from: each dashboard's
+# metadata.yaml and dashboards/register.yaml. Generation runs unattended after merge, so a bad
+# source has to fail here, on the pull request, rather than publish a broken index.
+#
 # Usage:   validation/scripts/validate_dashboards.sh [dashboards-dir]
 # Exit:    0 no errors (warnings allowed), 1 one or more errors
 #
@@ -24,10 +28,14 @@ MONITORING_NS="redhat-ods-monitoring"
 CURRENT_API="perses.dev/v1alpha2"
 LEGACY_API="perses.dev/v1alpha1"
 DISPLAY_PREFIX='[C] - '
+REGISTER_FILE="$DASHBOARDS_DIR/register.yaml"
+# Keeps the generated index scannable. Prose belongs in the dashboard's README, not in a cell.
+MAX_SUMMARY=200
 
 ERRORS=0
 WARNINGS=0
 MANIFESTS=0
+REGISTER_ENTRIES=0
 
 # GitHub Actions renders ::error:: and ::warning:: as annotations. Locally they
 # are just prefixes, which is still readable.
@@ -166,6 +174,147 @@ check_grafana_dir() {
   return 0
 }
 
+# -------------------------------------------------------------- metadata
+# dashboards/<slug>/metadata.yaml is what the dashboard index is generated from. It is checked
+# here rather than in the generator so a contribution fails on the pull request, at the same
+# gate as everything else, instead of after merge when the index is rebuilt unattended.
+check_metadata() {
+  local d="$1" meta="$1/metadata.yaml"
+  local field value title display expected found=0 f i doc_count
+
+  if [ ! -f "$meta" ]; then
+    err "$d" "missing metadata.yaml; the dashboard index is generated from it and cannot list a dashboard without one"
+    return 0
+  fi
+  if ! yq e 'true' "$meta" >/dev/null 2>&1; then
+    err "$meta" "invalid YAML"
+    return 0
+  fi
+
+  for field in title summary audience maintainer rhoai; do
+    value=$(yq e ".${field} // \"\"" "$meta" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ *//' -e 's/ *$//')
+    if [ -z "$value" ]; then
+      err "$meta" "$field is missing or empty"
+      continue
+    fi
+    # A pipe breaks both generated table formats; a tab breaks the records the generator sorts.
+    case "$value" in
+      *'|'*) err "$meta" "$field contains '|', which breaks the generated tables" ;;
+    esac
+    case "$value" in
+      *"$(printf '\t')"*) err "$meta" "$field contains a tab, which breaks the generated index" ;;
+    esac
+    case "$field" in
+      summary)
+        [ "${#value}" -gt "$MAX_SUMMARY" ] && err "$meta" \
+          "summary is ${#value} characters; keep it under $MAX_SUMMARY so the index stays scannable"
+        ;;
+      maintainer)
+        printf '%s' "$value" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9-]*$' || err "$meta" \
+          "maintainer '$value' must be a bare GitHub handle, with no @ and no URL; the index builds the link"
+        ;;
+    esac
+  done
+
+  # title is what the index shows and display.name is what the console shows: two copies of one
+  # fact, so they are checked against each other rather than left to drift.
+  title=$(yq e '.title // ""' "$meta")
+  [ -n "$title" ] || return 0
+  [ -d "$d/perses" ] || return 0
+
+  for f in "$d"/perses/*.yaml "$d"/perses/*.yml; do
+    [ -e "$f" ] || continue
+    yq e 'true' "$f" >/dev/null 2>&1 || continue
+    doc_count=$(yq e --no-doc 'di' "$f" 2>/dev/null | tail -1)
+    doc_count=$((doc_count + 1))
+    for ((i = 0; i < doc_count; i++)); do
+      if [ "$(yq e "select(di == $i) | .spec | has(\"config\")" "$f")" = "true" ]; then
+        display=$(yq e "select(di == $i) | .spec.config.display.name // \"\"" "$f")
+      else
+        display=$(yq e "select(di == $i) | .spec.display.name // \"\"" "$f")
+      fi
+      [ -n "$display" ] || continue
+      expected=${display#"$DISPLAY_PREFIX"}
+      [ "$expected" = "$title" ] && found=1
+    done
+  done
+
+  [ "$found" -eq 1 ] || err "$meta" \
+    "title '$title' matches no display.name under $d/perses (expected '${DISPLAY_PREFIX}${title}'); the index and the console would disagree"
+  return 0
+}
+
+# -------------------------------------------------------------- register
+# dashboards/register.yaml is the other source the index is generated from: one entry per
+# repository that keeps its own dashboards, with the dashboards it ships nested under it.
+check_register() {
+  local f="$REGISTER_FILE"
+  local count i j dcount repo maintainer url details field value
+
+  if [ ! -f "$f" ]; then
+    err "$f" "not found; it is a source for the generated index, so it exists even when empty"
+    return 0
+  fi
+  if ! yq e 'true' "$f" >/dev/null 2>&1; then
+    err "$f" "invalid YAML"
+    return 0
+  fi
+  if [ "$(yq e 'type' "$f")" != "!!seq" ]; then
+    err "$f" "must be a list of repositories"
+    return 0
+  fi
+
+  count=$(yq e 'length' "$f")
+  for ((i = 0; i < count; i++)); do
+    REGISTER_ENTRIES=$((REGISTER_ENTRIES + 1))
+    repo=$(yq e ".[$i].repo // \"\"" "$f")
+    maintainer=$(yq e ".[$i].maintainer // \"\"" "$f")
+
+    case "$repo" in
+      https://github.com/*/*) : ;;
+      "") err "$f" "entry $i has no repo" ;;
+      *) err "$f" "entry $i repo '$repo' must be a https://github.com/<owner>/<name> URL; owner/name is derived from it" ;;
+    esac
+
+    printf '%s' "$maintainer" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9-]*$' || err "$f" \
+      "entry $i maintainer '$maintainer' must be a bare GitHub handle, with no @ and no URL"
+
+    dcount=$(yq e ".[$i].dashboards | length" "$f" 2>/dev/null)
+    case "$dcount" in ''|null) dcount=0 ;; esac
+    if [ "$dcount" -eq 0 ]; then
+      err "$f" "entry $i ($repo) lists no dashboards; an entry exists to point at a dashboard"
+      continue
+    fi
+
+    for ((j = 0; j < dcount; j++)); do
+      for field in title format url required_data; do
+        value=$(yq e ".[$i].dashboards[$j].${field} // \"\"" "$f" | tr '\n' ' ' | sed -e 's/ *$//')
+        if [ -z "$value" ]; then
+          err "$f" "entry $i dashboard $j: $field is missing or empty"
+          continue
+        fi
+        case "$value" in
+          *'|'*) err "$f" "entry $i dashboard $j: $field contains '|', which breaks the generated tables" ;;
+        esac
+      done
+
+      url=$(yq e ".[$i].dashboards[$j].url // \"\"" "$f")
+      case "$url" in
+        ''|https://*) : ;;
+        *) err "$f" "entry $i dashboard $j: url '$url' must start with https://" ;;
+      esac
+
+      # An entry too long for a row gets its own page in dashboards/; a dead link to one is
+      # worse than no link.
+      details=$(yq e ".[$i].dashboards[$j].details // \"\"" "$f")
+      if [ -n "$details" ] && [ ! -f "$DASHBOARDS_DIR/$details" ]; then
+        err "$f" "entry $i dashboard $j: details '$details' does not exist in $DASHBOARDS_DIR/"
+      fi
+    done
+  done
+  return 0
+}
+
 # ------------------------------------------------------------- directory
 check_dashboard_dir() {
   local d="$1" base f found
@@ -176,6 +325,8 @@ check_dashboard_dir() {
 
   [ -f "$d/README.md" ] \
     || err "$d" "missing README.md; without it nobody can tell which metrics the dashboard needs"
+
+  check_metadata "$d"
 
   if [ ! -d "$d/perses" ] && [ ! -d "$d/grafana" ]; then
     err "$d" "must contain perses/ or grafana/ (or both)"
@@ -212,13 +363,16 @@ for d in "$DASHBOARDS_DIR"/*/; do
   check_dashboard_dir "${d%/}"
 done
 
+check_register
+
 if [ "$DIRS" -eq 0 ]; then
   printf '%s/ holds no dashboard directories yet, nothing to validate\n' "$DASHBOARDS_DIR"
   exit 0
 fi
 
 printf 'dashboard directories: %d\n' "$DIRS"
-printf 'Perses manifests checked: %d\n\n' "$MANIFESTS"
+printf 'Perses manifests checked: %d\n' "$MANIFESTS"
+printf 'register entries checked: %d\n\n' "$REGISTER_ENTRIES"
 
 if [ "$ERRORS" -gt 0 ]; then
   printf 'FAIL  %d error(s), %d warning(s)\n' "$ERRORS" "$WARNINGS"

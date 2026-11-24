@@ -17,8 +17,9 @@ Ask one question: does the dashboard query only `data-science-prometheus-datasou
 - **Yes** -> continue below.
 - **No** (own exporter/operator, joins multiple datasources, ships versioned with an application,
   or maintains its own state/API) -> it belongs in the
-  [dashboard register](../../dashboards/README.md) instead, as a row in `dashboards/README.md`,
-  not a directory here. Stop and help the contributor write that row instead.
+  [dashboard register](../../dashboards/register.yaml) instead, as an entry in
+  `dashboards/register.yaml` under the repository that owns it, not a directory here. Stop and
+  help the contributor write that entry instead.
 
 A dashboard contribution is the manifest(s) and the README — nothing else. Load generators,
 synthetic-traffic scripts, demo pods, or other tooling to produce test data do not belong in
@@ -50,6 +51,7 @@ dashboard yet, say so plainly rather than filling the README with assumptions.
 ```
 dashboards/<slug>/
 ├── README.md
+├── metadata.yaml          # what the generated index says about it
 ├── perses/
 │   └── <slug>.yaml        # if Perses
 └── grafana/
@@ -95,7 +97,7 @@ shipped Cluster Observability Operator build has no bar gauges, no independent Y
 table panels, so a faithful port often has to be redesigned rather than translated. Contributing
 one format doesn't require the other.
 
-## 5. Write the README
+## 5. Write the README and metadata.yaml
 
 Use `templates/README.md` as the structure, and keep to it. Required sections, per
 `contributing.adoc`:
@@ -112,6 +114,27 @@ a load-generation how-to; if that kind of material feels necessary, it belongs i
 own upstream repository (and the register), not inlined here. A README that runs to hundreds of
 lines is a sign the contribution has grown past "dashboard" — go back to step 1.
 
+Then write `metadata.yaml` from `templates/metadata.yaml`. This is what puts the dashboard in
+the generated index on the docs site and in `dashboards/README.md`, and every field is
+required:
+
+```yaml
+title: vLLM Token Throughput    # exactly display.name without the "[C] - " prefix
+summary: >-                     # one sentence, under 200 characters, no pipe characters
+  Output token rate per vLLM model, as tokens per second rather than a running total.
+audience: Anyone operating model serving on this cluster
+maintainer: rcarrata            # bare handle, no @, no URL
+rhoai: "3.5"                    # the version actually tested on
+```
+
+Everything in it is already gathered in step 2 — don't ask again, and don't invent a tested
+version. Formats and admin-only visibility come from the directory and the manifest, so they
+are not repeated here. `title` is checked against `display.name`, so if one changes, change
+both.
+
+Don't hand-write a row into `dashboards/README.md` or into the docs: both index tables are
+generated, and a hand edit is overwritten on the next run.
+
 ## 6. Before anything is committed
 
 - Scan manifests, screenshots, and README examples for credentials, tokens, customer/project
@@ -127,7 +150,17 @@ lines is a sign the contribution has grown past "dashboard" — go back to step 
 
 Needs `yq` (mikefarah/yq v4) and `jq`. Fix every error it reports — warnings (e.g. `v1alpha1`
 apiVersion) are allowed but worth a second look. This is exactly what CI runs on the pull request;
-there's nothing to gain by skipping it locally.
+there's nothing to gain by skipping it locally. It also checks `metadata.yaml`, including the
+`title` against `display.name`.
+
+To see the index row the contribution will produce:
+
+```bash
+./validation/scripts/generate_dashboard_index.sh
+```
+
+Committing its output is optional — CI regenerates it after merge — but it makes the row
+visible in the pull request, which is where a reviewer can still object to the wording.
 
 ## 8. Deploy and confirm it actually works
 

@@ -1,0 +1,36 @@
+# The dashboard register: dashboards kept in their own repositories rather than in this tree,
+# because they need data the RHOAI Monitoring Stack does not supply on its own.
+#
+# One entry per repository, with the dashboards it ships nested under it. Rendered into the
+# docs site and into dashboards/README.md by validation/scripts/generate_dashboard_index.sh -
+# add an entry here, never to a generated table.
+#
+#   repo          required  repository URL; owner/name is derived from it for display
+#   maintainer    required  GitHub handle or team to contact, without the @
+#   dashboards    required  at least one, each with:
+#     title         required  the dashboard title as it appears in the tool
+#     format        required  Perses or Grafana, with the schema or spec version tested against
+#     url           required  direct link to the dashboard definition
+#     required_data required  datasource, metric families, and anything extra it depends on
+#     details       optional  a longer page in dashboards/, for an entry a row cannot explain
+
+- repo: https://github.com/rdwj/platform-billing-operator
+  maintainer: rdwj
+  dashboards:
+    - title: Platform Billing Overview
+      format: Grafana, schemaVersion 39
+      url: https://github.com/rdwj/platform-billing-operator/blob/main/config/grafana/billing-overview.json
+      required_data: >-
+        Prometheus; `billing_*` metrics and four recording rules exported by the operator.
+      details: platform-billing-operator.md
+
+- repo: https://github.com/williamcaban/demo-guardrails
+  maintainer: williamcaban
+  dashboards:
+    - title: "NeMo Guardrails: blocked vs allowed"
+      format: Perses, `perses.dev/v1alpha2`
+      url: https://github.com/williamcaban/demo-guardrails/blob/main/manifests/09-perses-dashboard.yaml
+      required_data: >-
+        `guardrails_requests_total` and `guardrails_requests_blocked_total`, recorded from NeMo
+        Guardrails OTLP traces by an OpenTelemetry Collector with the spanmetrics connector,
+        plus Thanos Ruler recording rules. Not available from the Monitoring Stack alone.

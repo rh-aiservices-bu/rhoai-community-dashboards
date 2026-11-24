@@ -5,11 +5,13 @@ The layout exists so that a reviewer, a script, and an agent can all find the sa
 [source,text]
 ----
 rhoai-community-dashboards/
-├── README.md                          <1>
+├── README.md                           <1>
 ├── dashboards/
-│   ├── README.md                      <2>
-│   └── <dashboard-name>/              <3>
+│   ├── README.md                       <2>
+│   ├── register.yaml                   <3>
+│   └── <dashboard-name>/               <4>
 │       ├── README.md
+│       ├── metadata.yaml               <5>
 │       ├── perses/
 │       │   └── <dashboard-name>.yaml
 │       └── grafana/
@@ -17,25 +19,31 @@ rhoai-community-dashboards/
 │           └── <dashboard-name>-cr.yaml
 ├── validation/
 │   └── scripts/
-│       ├── validate_monitoring.sh     <4>
-│       └── templates/                 <5>
-├── content/                           <6>
+│       ├── validate_monitoring.sh      <6>
+│       ├── generate_dashboard_index.sh <7>
+│       └── templates/                  <8>
+├── content/                            <9>
 │   ├── antora.yml
 │   └── modules/ROOT/
 │       ├── nav.adoc
-│       └── pages/
-├── supplemental-ui/                   <7>
+│       ├── pages/
+│       └── partials/                   <10>
+├── supplemental-ui/                    <11>
 ├── site.yml
-└── .skills/                           <8>
+└── .skills/                            <12>
 ----
 <1> Short introduction and links to this documentation site. Not the place for reference material.
-<2> The xref:dashboard-register.adoc[dashboard register], listing dashboards that live in other repositories.
-<3> One directory per dashboard. The contract is below.
-<4> Checks that the Monitoring Stack is deployed and ready. It validates; it never installs.
-<5> Expected resource shapes: `DSCInitialization`, Grafana CRs, datasources. Product changes are absorbed here, not in the script.
-<6> Antora source for this site.
-<7> Theme overrides: logo, favicon, header and footer partials.
-<8> Agent skills for contributing and deploying a dashboard.
+<2> The xref:dashboard-register.adoc[dashboard index]: the dashboards held here and the ones kept in other repositories. Generated, apart from a short introduction.
+<3> The register source. One entry per repository that keeps its own dashboards, with the dashboards it ships nested under it.
+<4> One directory per dashboard. The contract is below.
+<5> What the index says about this dashboard. Part of the contract, below.
+<6> Checks that the Monitoring Stack is deployed and ready. It validates; it never installs.
+<7> Writes the indexes from `metadata.yaml` and `register.yaml`. Its output is never edited by hand.
+<8> Expected resource shapes: `DSCInitialization`, Grafana CRs, datasources. Product changes are absorbed here, not in the script.
+<9> Antora source for this site.
+<10> Generated AsciiDoc that the pages include.
+<11> Theme overrides: logo, favicon, header and footer partials.
+<12> Agent skills for contributing and deploying a dashboard.
 
 == The dashboard directory contract
 
@@ -47,6 +55,9 @@ A directory under `dashboards/` is named after the dashboard in lowercase with h
 
 | `README.md`
 | Required. Purpose, audience, maintainer, tested versions, required metrics, deployment command, known limitations.
+
+| `metadata.yaml`
+| Required. `title`, `summary`, `audience`, `maintainer`, `rhoai`: the row the dashboard gets in the generated xref:dashboard-register.adoc[index]. `title` has to match the manifest's `display.name` without its `[C] - ` prefix. Formats and admin-only visibility are read from the directory and the manifest, so they are not repeated here.
 
 | `perses/`
 | Required if a Perses version exists. One `PersesDashboard` manifest, applied as-is.
@@ -93,12 +104,33 @@ needs a language model:
 * `apiVersion` is `{perses-api}`; `v1alpha1` is a warning rather than an error
 * No query pins `model_name` or `model` to a literal where a variable would work
 * Grafana directories hold a dashboard: a `GrafanaDashboard` CR whose `spec.json` parses, or a parseable `.json`
+* `metadata.yaml` is present and complete, its `summary` fits in a table cell, its `maintainer` is a bare handle, and its `title` matches the manifest's `display.name`
+* `dashboards/register.yaml` entries carry a repository URL, a maintainer, and at least one dashboard with a title, format, link and required data
 
 Run it yourself before opening a pull request. It needs `yq` and `jq`:
 
 [source,bash]
 ----
 ./validation/scripts/validate_dashboards.sh
+----
+
+=== The indexes are generated, not reviewed
+
+`validation/scripts/generate_dashboard_index.sh` writes the index tables from `metadata.yaml`
+and `register.yaml`, into this site and into `dashboards/README.md`. Nobody writes a table row
+by hand, so nobody reviews one.
+
+The *dashboard index* workflow runs it. On a pull request it only prints the rows the change
+would add, so a reviewer sees them without the pull request being gated and without needing a
+token for a contributor's fork. On a merge to `main` it regenerates and commits the result if
+it changed. The site build runs the generator too, immediately before `antora generate`, so a
+published page is current whether or not that commit happened.
+
+Run it yourself if you want to see your entry first; it needs `yq`, as the validator does:
+
+[source,bash]
+----
+./validation/scripts/generate_dashboard_index.sh
 ----
 
 === CodeRabbit review, which does not gate anything

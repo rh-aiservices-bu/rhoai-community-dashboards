@@ -2,7 +2,13 @@
 
 A community-driven collection of custom dashboards as code for Red Hat OpenShift AI (RHOAI). This repository brings together contributions from field teams, customers, and the wider community to answer operational questions specific to their AI workloads and organizations.
 
-Contributions include Perses and Grafana dashboards or entries in the [dashboard register](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/tree/main/dashboards#indexed-repositories) - an index of dashboards that live off-repository.
+<div align="center">
+  <img src="./diagrams/overview.gif">
+  <p><em>Demonstration of the <a href="dashboards/vllm-performance-monitor">vllm-performance-monitor</a> community dashboard.</em></p>
+</div>
+
+Contributions include Perses and Grafana dashboards or entries in the [dashboard register](https://github.com/rh-aiservices-bu/rhoai-community-dashboards/tree/main/dashboards#dashboard-register) - an index of dashboards that live off-repository.
+
 
 **Full documentation:** https://rh-aiservices-bu.github.io/rhoai-community-dashboards/
 

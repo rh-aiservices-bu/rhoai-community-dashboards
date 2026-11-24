@@ -1,5 +1,8 @@
 = RHOAI Community Dashboards
 
+[.text-center]
+image::overview.gif[Demonstration of the vllm-performance-monitor community dashboard]
+
 Community-maintained Perses and Grafana dashboards for {rhoai}, kept in Git and deployed with `oc apply`.
 
 * Every dashboard is a Kubernetes resource: reviewed, versioned, and rolled back like any other manifest
